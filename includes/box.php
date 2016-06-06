@@ -66,8 +66,20 @@ class Box {
         return $this->OuterHeight;
     }
 
+    public function getInnerLength() {
+        return $this->OuterLength;
+    }
+    
+    public function getInnerWidth() {
+        return $this->OuterWidth;
+    }
+    
+    public function getInnerHeight() {
+        return $this->OuterHeight;
+    }
+
     public function getPackingVolume() {
-        return ($this->InnerLength * $this->InnerWidth * $this->InnerHeight);
+        return ($this->getInnerLength() * $this->getInnerWidth() * $this->getInnerHeight());
     }
 
     public function getPackingWeight() {
@@ -99,7 +111,7 @@ class Box {
         $dims = array($length, $width, $height);
         sort($dims);
 
-        if ($this->InnerLength >= $dims[2] && $this->InnerWidth >= $dims[1] && $this->InnerHeight >= $dims[0]) {
+        if ($this->InnerLength >= $dims[2] && $this->InnerWidth >= $dims[1] && $this->InnerHeight >= $dims[0] && $this->getPackingVolume() >= $dims[0]*$dims[1]*$dims[2]) {
             $this->isValid(true);
         }
         

@@ -7,6 +7,7 @@
  * @author      travism
  * @version     1.0
 */
+require_once(dirname(__FILE__).'/../connector/RatingClient.php');
 require_once(dirname(__FILE__).'/../connector/ShippingClient.php');
 
 class WC_Order_ShipTime {
@@ -47,6 +48,7 @@ class WC_Order_ShipTime {
 	private $all_services = null;
 
 	private $apiUrl = 'http://sandbox.shiptime.com/api/';
+	private $_ratingClient = null;
 	private $_shippingClient = null;
 
 	public function __construct() {
@@ -170,6 +172,7 @@ class WC_Order_ShipTime {
 		if (is_object($shiptime_auth)) {
 			$encUser = $shiptime_auth->username;
 			$encPass = $shiptime_auth->password;
+			$this->_ratingClient = new emergeit\RatingClient($encUser, $encPass, $this->apiUrl);
 			$this->_shippingClient = new emergeit\ShippingClient($encUser, $encPass, $this->apiUrl);
 		}
 	}
@@ -250,9 +253,9 @@ class WC_Order_ShipTime {
 
 		$this->shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$post->ID}");
 
-		add_meta_box( 'shipment_metabox1', __( 'Shipment Details', 'wc_auctioninc' ), array( $this, 'shiptime_metabox_content1' ), 'shop_order', 'side', 'default' );
+		add_meta_box( 'shipment_metabox1', 'Shipment Details', array( $this, 'shiptime_metabox_content1' ), 'shop_order', 'side', 'default' );
 
-		add_meta_box( 'shipment_metabox2', __( 'Labels & Tracking', 'wc_auctioninc' ), array( $this, 'shiptime_metabox_content2' ), 'shop_order', 'side', 'default' );
+		add_meta_box( 'shipment_metabox2', 'Labels & Tracking', array( $this, 'shiptime_metabox_content2' ), 'shop_order', 'side', 'default' );
 	}
 	
 	function shiptime_metabox_content1() {
@@ -260,11 +263,7 @@ class WC_Order_ShipTime {
 		global $post;
 		$shipmentId = '';
 
-		//$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$post->ID}");
 		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
-		//var_dump($this->shiptime_data);
-		//$shiptime_meta = get_post_meta($post->ID, 'shiptime_order_meta', true);
-		//var_dump($this->shipping_meta);
 
 		if($this->shiptime_data->emergeit_id == '1234') {
 			$href_url 				= admin_url( '/post.php?post='.$post->ID.'&action=edit&shiptime_place_shipment='.base64_encode( $post->ID ) );
@@ -306,7 +305,7 @@ class WC_Order_ShipTime {
 					<span style='width:50px;display:inline-block'><strong>Width:</strong></span><input type="text" name="parcel_width_<?= $i+1; ?>" id="parcel_width_<?= $i+1; ?>" value="<?= $this->arr_check($pkgs[$i], 'width'); ?>" size="3" />&nbsp;<?=$this->dim_uom;?><br>
 					<span style='width:50px;display:inline-block'><strong>Height:</strong></span><input type="text" name="parcel_height_<?= $i+1; ?>" id="parcel_height_<?= $i+1; ?>" value="<?= $this->arr_check($pkgs[$i], 'height'); ?>" size="3" />&nbsp;<?=$this->dim_uom;?><br>
 					Selected Box: <?php echo '<strong>' . (!empty($boxs[$i]) ? $boxs[$i] : 'N/A') . '</strong>'; ?><br>
-					<a href="#TB_inline?width=600&height=480&inlineId=choose-box&pkg=<?php echo $i+1; ?>" class="thickbox">Change box</a>&nbsp; or &nbsp;<a href="#TB_inline?width=600&height=480&inlineId=add-box&pkg=<?php echo $i+1; ?>" class="thickbox">Add new box</a>
+					<a href="#TB_inline?width=600&height=480&inlineId=choose-box" class="thickbox">Change box</a>&nbsp; or &nbsp;<a href="#TB_inline?width=600&height=480&inlineId=add-box" class="thickbox">Add new box</a>
 					<?php add_thickbox(); ?>
 					<div id="choose-box" style="display:none;">
 						<h2>Select Box Configuration for Shipment</h2>
@@ -317,9 +316,9 @@ class WC_Order_ShipTime {
 								echo "<input type='checkbox' class='choose_box' name='box_choice[]' value='" . $box['label'] . "'><strong>" . $box['label'] . "</strong><br>";
 								echo "Outside Dimensions: {$box['outer_length']} X {$box['outer_width']} X {$box['outer_height']} IN<br>";
 								echo "Inside Dimensions: {$box['inner_length']} X {$box['inner_width']} X {$box['inner_height']} IN<br>Packing Weight: {$box['weight']} LBS<br><br>";
-								}
+							}
 							?>
-							<a href="<?php echo admin_url( '/?shiptime_box_selection='.base64_encode( $post->ID ) ); ?>" class="button-primary choose_box"><?php _e( 'Submit', 'wc_auctioninc' ); ?></a>
+							<a href="<?php echo admin_url( '/?shiptime_box_selection='.base64_encode( $post->ID  ) ); ?>" class="button-primary choose_box">Submit</a>
 						</p>
 						<script type="text/javascript">
 							jQuery("a.choose_box").on("click", function() {
@@ -364,12 +363,12 @@ class WC_Order_ShipTime {
 									<td><input type="text" id="shiptime_box_inner_height" name="shiptime_box_inner_height">
 								</tr>
 								<tr>
-									<td><label for="shiptime_box_weight">Packing Weight (lbs)&nbsp;<img class="help_tip" style="float:none;" data-tip="<?php _e( 'Packing Weight = (Weight of Empty Box) + (Weight of Packing Materials)', 'wc_auctioninc' ); ?>" src="<?php echo WC()->plugin_url();?>/assets/images/help.png" height="16" width="16" /></label>
+									<td><label for="shiptime_box_weight">Packing Weight (lbs)&nbsp;<img class="help_tip" style="float:none;" data-tip="Packing Weight = (Weight of Empty Box) + (Weight of Packing Materials)" src="<?php echo WC()->plugin_url();?>/assets/images/help.png" height="16" width="16" /></label>
 									<td><input type="text" id="shiptime_box_weight" name="shiptime_box_weight">
 								</tr>
 							</table>
 							<br><br>																												
-							<a href="<?php echo admin_url( '/?shiptime_box_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary add_box"><?php _e( 'Submit', 'wc_auctioninc' ); ?></a>
+							<a href="<?php echo admin_url( '/?shiptime_box_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary add_box">Submit</a>
 						</p>
 						<script type="text/javascript">
 							jQuery("a.add_box").on("click", function() {
@@ -405,7 +404,7 @@ class WC_Order_ShipTime {
 						echo "Inside Dimensions: {$box['inner_length']} X {$box['inner_width']} X {$box['inner_height']} IN<br>Packing Weight: {$box['weight']} LBS<br><br>";
 						}
 					?>
-					<a href="<?php echo admin_url( '/?shiptime_pkg_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary choose_box"><?php _e( 'Submit', 'wc_auctioninc' ); ?></a>
+					<a href="<?php echo admin_url( '/?shiptime_pkg_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary choose_box">Submit</a>
 				</p>
 				<script type="text/javascript">
 					jQuery("a.choose_box").on("click", function() {
@@ -415,7 +414,7 @@ class WC_Order_ShipTime {
 				</script>
 			</div>
 			<br><br>
-			<a href="<?php echo $href_url; ?>" class="button button-primary tips place_shipment" data-tip="<?php _e('Create New Shipment', 'wc_auctioninc'); ?>"><?php _e('Create Shipment', 'wc_auctioninc'); ?></a>
+			<a href="<?php echo $href_url; ?>" class="button button-primary tips place_shipment" data-tip="Create New Shipment">Create Shipment</a>
 			<script type="text/javascript">
 				jQuery("a.place_shipment").on("click", function() {
 					loc = this.href;
@@ -430,7 +429,7 @@ class WC_Order_ShipTime {
 				    return false;
 				});
 			</script>
-			<a href="<?php echo admin_url( '/post.php?post='.$post->ID.'&action=edit&recalc=1' ); ?>" class="button button-primary tips recalc" data-tip="<?php _e('Recalculate Shipping Costs', 'wc_auctioninc'); ?>"><?php _e('Recalculate', 'wc_auctioninc'); ?></a>
+			<a href="<?php echo admin_url( '/post.php?post='.$post->ID.'&action=edit&recalc=1' ); ?>" class="button button-primary tips recalc" data-tip="Recalculate Shipping Costs">Recalculate</a>
 			<script type="text/javascript">
 				jQuery("a.recalc").on("click", function() {
 					loc = this.href;
@@ -461,7 +460,7 @@ class WC_Order_ShipTime {
 
 			$href_url = admin_url( '/post.php?post='.$post->ID.'&action=edit&shiptime_cancel_shipment='.base64_encode( $post->ID ) );
 			?>
-				<br><a class="button tips" href="<?php echo $href_url; ?>" data-tip="<?php _e( 'Cancel Current Shipment', 'wc_auctioninc' ); ?>"><?php _e( 'Cancel Shipment', 'wc_auctioninc' ); ?></a>
+				<br><a class="button tips" href="<?php echo $href_url; ?>" data-tip="Cancel Current Shipment">Cancel Shipment</a>
 			<?php
 		}
 	}
@@ -503,13 +502,13 @@ class WC_Order_ShipTime {
 				}
 				?>
 				<br>
-				<a class="button button-primary tips" href="<?php echo $href_url; ?>" data-tip="<?php _e( 'Track Current Shipment', 'wc_auctioninc' ); ?>"><?php _e( 'Track Shipment', 'wc_auctioninc' ); ?></a>
+				<a class="button button-primary tips" href="<?php echo $href_url; ?>" data-tip="Track Current Shipment">Track Shipment</a>
 				<?php if ($order->shipping_country != $shiptime_auth->country) { ?>
-				<a target="_new" class="button button-primary tips" href="<?php echo $this->shiptime_data->label_url; ?>" data-tip="<?php _e('Print Shipping Label(s)', 'wc_auctioninc'); ?>"><?php _e('Print Label', 'wc_auctioninc'); ?></a>
+				<a target="_new" class="button button-primary tips" href="<?php echo $this->shiptime_data->label_url; ?>" data-tip="Print Shipping Label(s)">Print Label</a>
 				<?php } else { ?>
 				<br><br>
-				<a target="_new" class="button button-primary tips" href="<?php echo $this->shiptime_data->label_url; ?>" data-tip="<?php _e('Print Shipping Label(s)', 'wc_auctioninc'); ?>"><?php _e('Print Label', 'wc_auctioninc'); ?></a>
-				<a target="_new" class="button button-primary tips" href="<?php echo $this->shiptime_data->invoice_url; ?>" data-tip="<?php _e('Print Customs Invoice', 'wc_auctioninc'); ?>"><?php _e('Print Customs Doc', 'wc_auctioninc'); ?></a>
+				<a target="_new" class="button button-primary tips" href="<?php echo $this->shiptime_data->label_url; ?>" data-tip="Print Shipping Label(s)">Print Label</a>
+				<a target="_new" class="button button-primary tips" href="<?php echo $this->shiptime_data->invoice_url; ?>" data-tip="Print Customs Invoice">Print Customs Doc</a>
 				<?php } ?>
 				<br>
 			<?php
@@ -790,11 +789,14 @@ class WC_Order_ShipTime {
 		// Box selection
 		$box = sanitize_text_field($_GET['shiptime_box']);
 
+//var_dump($pid);var_dump($box);die();
+
 		// DB update
 		$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
 		$shiptime_pkgs = unserialize($shiptime_data->package_data);
 		$shiptime_boxs = unserialize($shiptime_data->box_codes);
 		$shiptime_settings = get_option('woocommerce_shiptime_settings');
+
 		if (count($shiptime_boxs) > $pid) {
 			$shiptime_boxs[$pid] = $box;
 		}
@@ -1010,10 +1012,113 @@ class WC_Order_ShipTime {
 			$shiptime_pkgs = unserialize($shiptime_data->package_data);
 			$shiptime_settings = get_option('woocommerce_shiptime_settings');
 	        
-	       if (true) {
+	        // Setup XML Request
+            $req = new emergeit\GetRatesRequest();
 
-	       	// TODO: recalc
-	        
+			// Pull merchant info from ShipTime signup
+			$req->From->Attention = ucwords($shiptime_auth->first_name) . ' ' . ucwords($shiptime_auth->last_name);
+			$req->From->City = ucwords($shiptime_auth->city);
+			$req->From->Phone = $shiptime_auth->phone;
+			$req->From->CompanyName = $shiptime_auth->company;
+			$req->From->CountryCode = $shiptime_auth->country;
+			$req->From->Email = $shiptime_auth->email;
+			$req->From->PostalCode = $shiptime_auth->zip;
+			$req->From->Province = $shiptime_auth->state;
+			$req->From->StreetAddress = ucwords($shiptime_auth->address);
+			$req->From->Notify = false;
+			$req->From->Residential = false;
+			// Pull customer info from Woo order
+			$user_info = get_user_meta(absint($order->customer_user));
+			$req->To->Attention = ucwords($ship_addr['first_name'] . ' ' . $ship_addr['last_name']);
+			$req->To->City = ucwords($ship_addr['city']);
+			$req->To->Phone = $bill_addr['phone'];
+			$req->To->CompanyName = !empty($ship_addr['company']) ? $ship_addr['company'] : '-';
+			$req->To->CountryCode = $ship_addr['country'];
+			$req->To->Email = $bill_addr['email'];
+			$req->To->PostalCode = $ship_addr['postcode'];
+			$req->To->Province = $ship_addr['state'];
+			$req->To->StreetAddress = ucwords($ship_addr['address_1']);
+			$req->To->StreetAddress2 = ucwords($ship_addr['address_2']);
+			$req->To->Notify = false;
+			$req->To->Residential = false;
+
+			$req->PackageType = 'PACKAGE';
+			$is_domestic = ($order->shipping_country == $shiptime_auth->country);
+
+			foreach ($shiptime_pkgs as $pkg) {
+				$item = new emergeit\LineItem();
+				$item->Length->UnitsType = 'IN';
+				$item->Length->Value = $pkg['length'];
+				$item->Width->UnitsType = 'IN';
+				$item->Width->Value = $pkg['width'];
+				$item->Height->UnitsType = 'IN';
+				$item->Height->Value = $pkg['height'];
+				$item->Weight->UnitsType = 'LB';
+				$item->Weight->Value = $pkg['weight'];
+
+				if (!$is_domestic) {
+					$desc = array();
+					foreach ( $order->get_items( array( 'line_item' ) ) as $iid => $data ) {
+						$product = $order->get_product_from_item( $data );
+						$desc[] = $product->get_title();
+					}
+					$item->Description = implode(',', $desc);
+				}
+
+				$req->ShipmentItems[] = $item;
+			}
+			$req->DeferredProcessing = false;
+
+            // Int'l Shipment?
+            if (!$is_domestic) {
+                // Customs Invoice Required
+                $dt = new emergeit\DutiesAndTaxes();
+                $dt->Dutiable = true;
+                $dt->Selection = 'SHIPPER'; // 'CONSIGNEE'
+                $req->CustomsInvoice->DutiesAndTaxes = $dt;
+
+                $ic = new emergeit\InvoiceContact();
+                $ic->City = '-';
+                $ic->CompanyName = '-';
+                $ic->CountryCode = '-';
+                $ic->Email = '-';
+                $ic->Phone = '-';
+                $ic->PostalCode = '-';
+                $ic->Province = '-';
+                $ic->StreetAddress = '-';
+                $ic->CustomsBroker = '-';
+                $ic->ShipperTaxId = '-';
+                $req->CustomsInvoice->InvoiceContact = $ic;
+
+                $req->CustomsInvoice->InvoiceItems = array();
+				foreach ( $order->get_items( array( 'line_item' ) ) as $item_id => $item ) {
+					$product = $order->get_product_from_item( $item );
+
+					$i = new emergeit\InvoiceItem();
+					$i->Code = get_post_meta($product->id, 'shiptime_hs_code', true);
+					$i->Description = $product->get_title();
+					$i->Origin = get_post_meta($product->id, 'shiptime_origin_country', true);
+					$i->Quantity->Value = (int)$item['qty'];
+					$i->UnitPrice->Amount = $item['line_subtotal'];
+					$i->UnitPrice->CurrencyCode = get_woocommerce_currency();
+
+					$req->CustomsInvoice->InvoiceItems[] = $i;
+				}
+            } else {
+                unset($req->CustomsInvoice);
+            }
+
+            // New API call
+            $shipRates = $this->_ratingClient->getRates($req);
+
+	       	if (!empty($shipRates->AvailableRates)) {
+	       		foreach ($shipRates->AvailableRates as $shipRate) {
+	       			$l = strpos($shipRate->ServiceName, $shipRate->CarrierName) !== false ? $shipRate->ServiceName : $shipRate->CarrierName . " " . (!$is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false ? "International " : "") . $shipRate->ServiceName;
+	       			if ($l == sanitize_text_field($_GET['shiptime_shipping_method'])) {
+	                    $msg = "<strong>Shipping Service:</strong> " . $l ."<br><strong>Shipping Rate:</strong> ".wc_price( $shipRate->TotalCharge->Amount/100.00, array('currency' => $order->get_order_currency()) );
+	       				break;
+	       			}
+	       		}
 	        } else {
 	            	$msg = "Unable to determine shipping rates.";
 	            	$err = true;

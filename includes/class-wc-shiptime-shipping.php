@@ -17,7 +17,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
      */
     public function __construct() {
         $this->id = 'shiptime';
-        $this->method_title = 'ShipTime';
+        $this->title = $this->method_title = 'ShipTime';
         $this->method_description = 'The <strong>ShipTime</strong> plugin obtains rates in real time from the ShipTime API during cart/checkout.';
         $this->init();
     }
@@ -86,6 +86,13 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                 'label' => 'Enable this shipping method',
                 'default' => 'no'
             ),
+            'debug_mode' => array(
+                'title' => 'Debug Mode',
+                'label' => 'Enable debug mode',
+                'type' => 'checkbox',
+                'default' => 'no',
+                'description' => 'Enable debug mode to show debugging data for ship rates in your cart. Only you, not your customers, can view this debug data.'
+            ),            
             'cart_threshold' => array(
                 'title' => 'Free Shipping Promotion',
                 'type' => 'number',
@@ -108,7 +115,14 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                 'title' => 'Shipping Services',
                 'type' => 'title',
                 'description' => 'Enable/Disable shipping services and assign markups.'
-            ),            
+            ),
+            'enable_intl' => array(
+                'title' => 'International Shipping',
+                'label' => 'Enable International Shipping Services',
+                'type' => 'checkbox',
+                'default' => 'no',
+                'description' => 'Enable full list of shipping services to support international shipments.'
+            ),           
             'services'  => array(
                 'type'  => 'shipping_services'
             ),            
@@ -136,13 +150,6 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                     'step' => '0.01',
                     'min' => '0'
                 )
-            ),
-            'debug_mode' => array(
-                'title' => 'Debug Mode',
-                'label' => 'Enable debug mode', 'wc_auctioninc',
-                'type' => 'checkbox',
-                'default' => 'no',
-                'description' => __('Enable debug mode to show debugging data for ship rates in your cart. Only you, not your customers, can view this debug data.', 'wc_auctioninc')
             )
         );
     }

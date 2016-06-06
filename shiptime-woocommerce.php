@@ -235,7 +235,13 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 		// Load JQuery
 		public function load_js() {
+			$screen = get_current_screen();
+			
 			wp_enqueue_script('jquery');
+
+			if ($screen->base == 'woocommerce_page_wc-settings') {
+				wp_enqueue_script('shiptime-settings', plugins_url('js/wc-shiptime-shipping-settings.js', __FILE__), array('jquery'), null, true);
+			}
 		}
 
 	}

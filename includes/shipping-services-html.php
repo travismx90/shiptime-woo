@@ -27,11 +27,17 @@
 				        'FedEx International Ground' => 'FEDEX_GROUND',
 				        'DHL INTL EXPRESS WORLDWIDE' => 'P_P'
 					);
+					$this->intl_services = array(
+						'FedEx International Priority',
+				        'FedEx International Economy',
+				        'FedEx International Ground',
+				        'DHL INTL EXPRESS WORLDWIDE'
+					);
 					$this->ordered_services = array();
 
 					foreach ( $this->services as $serviceName => $serviceId ) {
 						?>
-						<tr>
+						<tr<?php if (in_array($serviceName, $this->intl_services)) { echo " class='intl'"; } ?>>
 							<td>
 								<input type="text" name="<?php echo $serviceName; ?>" placeholder="<?php echo $serviceName; ?>" size="35" />
 							</td>

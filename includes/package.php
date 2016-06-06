@@ -3,7 +3,7 @@
  * Package
  * Representation of a package in a shipment
  *
- * Determines how a shipment for a given order breaks into one or more packages
+ * Determines how a package of items is grouped into a box
  *
  * @author      travism
  * @version     1.0
@@ -18,6 +18,7 @@ class Package {
 	public $Weight;
     public $DimUnit;
     public $WeightUnit;
+    public $ItemVolume;
 
 	public function __construct() {
 		$this->Box = null;
@@ -27,6 +28,7 @@ class Package {
 		$this->Weight = 0;
 		$this->DimUnit = 'IN';
 		$this->WeightUnit = 'LB';
+		$this->ItemVolume = 0;
 	}
 
 	public function setBox($box) {
@@ -39,6 +41,18 @@ class Package {
 
 	public function getBox() {
 		return $this->Box;
+	}
+
+	public function setLength($val) {
+		$this->Length = $val;
+	}
+
+	public function setWidth($val) {
+		$this->Width = $val;
+	}
+
+	public function setHeight($val) {
+		$this->Height = $val;
 	}
 
 	public function getLength() {
@@ -76,7 +90,11 @@ class Package {
     public function getWeightUnit() {
         return $this->WeightUnit;
     }
-	
+
+    public function getItemVolume() {
+    	return $this->ItemVolume;
+    }
+
 	public function pack($length, $width, $height, $weight) {
 		$curr_dims = array($this->Length, $this->Width, $this->Height);
         sort($curr_dims);
@@ -89,6 +107,8 @@ class Package {
 		$this->Height = (float) $curr_dims[0] + $new_dims[2];
 
 		$this->Weight += (float) $weight;
+
+		$this->ItemVolume += (float) $length * $width * $height;
 	}
 
 }
