@@ -7,7 +7,8 @@ require_once('types.php');
 
 class SignupClient extends ApiClientBase
 {
-	private $_defaultBaseUrl = 'http://ship.appspace.ca/api';
+	//private $_defaultBaseUrl = 'http://ship.appspace.ca/api';
+	private $_defaultBaseUrl = 'http://sandbox.shiptime.com/api';
 
 	private $_soapClient = null;
 	
@@ -25,6 +26,15 @@ class SignupClient extends ApiClientBase
 	{
 		$soapResp = $this->apiRequest('signup', $req);
 		$resp = new SignupResponse();
+		$this->populateObject($soapResp, $resp);
+	
+		return $resp;
+	}
+
+	public function getServices(GetServicesRequest $req)
+	{
+		$soapResp = $this->apiRequest('getServices', $req);
+		$resp = new GetServicesResponse();
 		$this->populateObject($soapResp, $resp);
 	
 		return $resp;
@@ -61,6 +71,29 @@ class SignupResponse extends EmergeitApiResponse
 	{
 		parent::__construct();
 		$this->key = new Key();
+	}
+}
+
+class GetServicesRequest extends EmergeitApiRequest
+{
+	public $IntegrationID = null;
+	public $Credentials = null;
+	
+	public function __construct()
+	{
+		parent::__construct();
+		$this->Credentials = new Key();
+	}
+}
+
+class GetServicesResponse extends EmergeitApiResponse
+{	
+	public $ServiceOptions = null;
+
+	public function __construct()
+	{
+		parent::__construct();
+		$this->ServiceOptions = array(new CarrierServiceOption());
 	}
 }
 

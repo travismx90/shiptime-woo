@@ -40,7 +40,7 @@
 				</tr>
 			</tfoot>
 			<tbody id="rates">
-				<?php									
+				<?php
 				if ( $this->boxes ) {
 					foreach ( $this->boxes as $id => $box ) {
 						?>

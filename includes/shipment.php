@@ -19,25 +19,44 @@ class ShipmentBuilder {
 	}
 
 	public function setItems($items) {
-		$this->Items = $items;
+		$exploded_items = array();
+
+		foreach ($items as $item) {
+			for ($i=0; $i < $item["quantity"]; $i++) {
+				$exploded_items[] = $item;
+			}
+		}
+
+		$this->Items = self::sortItems($exploded_items);
 	}
 
 	public function getItems() {
 		return $this->Items;
 	}
 
-	public function addItem($item) {
-		if (!is_array($this->Items)) {
-			$this->Items = array();
-		}
-		$this->Items[] = $item;
-	}
+    public static function sortItems($sort) {
+        if (empty($sort)) { return false; }
+        uasort($sort, array(__CLASS__, 'itemSorting'));
+        return $sort;
+    }
+    
+    public static function itemSorting($a, $b) {
+    	$a_dims = array($a["length"], $a["width"], $a["height"]);
+        sort($a_dims);
+        
+        $b_dims = array($b["length"], $b["width"], $b["height"]);
+        sort($b_dims);
 
-    public function canPackage($length, $width, $height, $package, $boxs, $max_l, $max_w, $max_h) {
-    	$l = $package->Length+$length;
-    	$w = $package->Width+$width;
-    	$h = $package->Height+$height;
-    	if ($l <= $max_l && $w <= $max_w && $h <= $max_h) {
+        if ($a_dims[2] == $b_dims[2]) return 0;
+        return ($a_dims[2] > $b_dims[2]) ? 1 : -1;
+    }
+
+    public function canPackage($length, $width, $height, $weight, $package, $boxs, $max_l, $max_w, $max_h) {
+    	// max_l, max_w, max_h
+    	// Service maximum package weight = 70 lbs
+    	$p = clone($package);
+    	$p->pack($length, $width, $height, $weight);
+    	if ($p->getLength() <= $max_l && $p->getWidth() <= $max_w && $p->getHeight() <= $max_h && ($package->getWeight() + $weight < 70)) {
 			foreach ($boxs as $b) {
 				if ($b->pack($l, $w, $h)) {
 					return true;
@@ -62,26 +81,24 @@ class ShipmentBuilder {
 		}
 		$boxs = Box::sortBoxes($boxs);
 		foreach ($boxs as $b) {
-			$max_l = $b->getInnerLength();
-			$max_w = $b->getInnerWidth();
-			$max_h = $b->getInnerHeight();
-			break;
+			if ($b->getLength() + 2*($b->getWidth() + $b->getHeight()) <= 108) {
+				$max_l = $b->getInnerLength();
+				$max_w = $b->getInnerWidth();
+				$max_h = $b->getInnerHeight();
+				break;
+			}
 		}
 		foreach ($this->Items as $item) {
-			for ($j=0; $j < $item["quantity"]; $j++) {
-				if (!isset($package) || !$this->canPackage($item["length"], $item["width"], $item["height"], $package, $boxs, $max_l, $max_w, $max_h)) {
-					$package = new Package();
-					$this->Packages[] = $package;
-				}
-				$package->pack($item["length"], $item["width"], $item["height"], $item["weight"]);
+			if (!isset($package) || !$this->canPackage($item["length"], $item["width"], $item["height"], $item["weight"], $package, $boxs, $max_l, $max_w, $max_h)) {
+				$package = new Package();
+				$this->Packages[] = $package;
 			}
+			$package->pack($item["length"], $item["width"], $item["height"], $item["weight"]);
 		}
 		foreach ($this->Packages as $package) {
 			foreach (array_reverse($boxs) as $b) {
 				if ($b->pack($package->getLength(), $package->getWidth(), $package->getHeight())) {
-					$package->setLength($b->getLength());
-					$package->setWidth($b->getWidth());
-					$package->setHeight($b->getHeight());
+					$package->setBox($b);
 					break;
 				}
 			}

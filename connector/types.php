@@ -25,6 +25,15 @@ class Amount
 	public $Value = null;
 }
 
+class CarrierServiceOption 
+{
+	public $CarrierId = null;
+	public $CarrierName = null;
+	public $ServiceId = null;
+	public $ServiceName = null;
+	public $ServiceType = null;
+}
+
 class CustomsInvoice
 {
 	public $DutiesAndTaxes = null;

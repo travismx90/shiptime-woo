@@ -28,11 +28,13 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			// Localization (To add French translation)
 			// load_plugin_textdomain('wc_shiptime', false, dirname(plugin_basename(__FILE__)) . '/languages/');
 
-			// Actions and filters
+			// Actions and Filters
 			add_action('init', array($this, 'init'));
 			add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'plugin_links'));
 			add_action('woocommerce_shipping_init', array($this, 'shipping_init'));
 			add_filter('woocommerce_shipping_methods', array($this, 'add_shipping_method'));
+			add_action('woocommerce_cart_collaterals', array($this, 'wc_shiptime_cart_css'));
+			add_action('woocommerce_cart_collaterals', array($this, 'wc_shiptime_cart_js'));
 			add_action('woocommerce_checkout_order_processed', array($this, 'save_shipping_details'));
 			add_action('woocommerce_product_options_shipping', array($this, 'add_product_fields'));
 			add_action('woocommerce_process_product_meta', array($this, 'save_product_fields'));
@@ -84,7 +86,10 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		      invoice_url text NOT NULL,
 		      emergeit_id varchar(255) DEFAULT '' NOT NULL,
 		      box_codes text NOT NULL,
-		      valid_services text NOT NULL,
+		      recalc text NOT NULL,
+		      quoted_rate decimal(8,2) NOT NULL,
+		      markup_rate decimal(8,2) NOT NULL,
+		      recalc_rate decimal(8,2) NOT NULL,
 		      UNIQUE KEY id (id)
 		    ) $charset_collate;";
 		    dbDelta( $sql );			
@@ -115,6 +120,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		public function plugin_links($links) {
 			$plugin_links = array(
 				'<a href="' . admin_url('admin.php?page=wc-settings&tab=shipping&section=wc_shipping_shiptime') . '">Settings</a>',
+				'<a href="' . admin_url('index.php?page=shiptime-signup&action=update') . '">Profile Details</a>',
 				'<a href="http://shiptime.com">Support</a>'
 			);
 
@@ -144,12 +150,14 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			$cart_sessid = array_shift(array_keys($woocommerce->session->cart));
 			$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");
 			$woo_order = new WC_Order($order_id);
-			$shipping_method = $woo_order->get_shipping_method();
+			$shipping_method = trim(array_shift(explode('[', $woo_order->get_shipping_method())));
+
+			$quoted_rate = 0;
 
 			$q = unserialize($quote->quote);
 			foreach ($q->AvailableRates as $r) {
 				if ($r->ServiceName == $shipping_method) {
-					$q = $r;
+					$quoted_rate = $r->TotalCharge->Amount/100.00;
 					break;
 				}
 			}
@@ -166,6 +174,18 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 				array( '%d', '%s', '%s', '%s' ),
 				array( '%d' ) 
 			);
+		}
+
+		// Change to Cart page
+		public function wc_shiptime_cart_css() {
+			// Widen cart totals div so each shipping ServiceName fits on a single line
+    		echo '<style>.woocommerce .cart-collaterals .cart_totals { width: 70%; }</style>';
+		}
+
+		// Change to Cart page
+		public function wc_shiptime_cart_js() {
+    		// Add HTML below shipping rates
+    		wp_enqueue_script('shiptime-cart', plugins_url('js/wc-shiptime-cart-html.js', __FILE__), array('jquery'), null, true);
 		}
 
 		// Add product shipping fields necessary for int'l shipments
@@ -227,7 +247,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 	        if (get_transient('shiptime_signup_success')) {
 	            echo '<div class="updated">
-	            <p>You have successfully integrated discounted shipping with ShipTime. To edit your account information or view your shipment history, login to the account you just created at <a target="_blank" href="http://shiptime.com">shiptime.com</a>.</p>
+	            <p>You have successfully integrated discounted shipping with ShipTime. Go to <a target="_blank" href="http://shiptime.com">shiptime.com</a> to access your account directly.</p>
 	            </div>';
 	            delete_transient('shiptime_signup_success');
 	        }

@@ -18,6 +18,7 @@ class Package {
 	public $Weight;
     public $DimUnit;
     public $WeightUnit;
+    public $ItemCount;
     public $ItemVolume;
 
 	public function __construct() {
@@ -28,6 +29,7 @@ class Package {
 		$this->Weight = 0;
 		$this->DimUnit = 'IN';
 		$this->WeightUnit = 'LB';
+		$this->ItemCount = 0;
 		$this->ItemVolume = 0;
 	}
 
@@ -41,18 +43,6 @@ class Package {
 
 	public function getBox() {
 		return $this->Box;
-	}
-
-	public function setLength($val) {
-		$this->Length = $val;
-	}
-
-	public function setWidth($val) {
-		$this->Width = $val;
-	}
-
-	public function setHeight($val) {
-		$this->Height = $val;
 	}
 
 	public function getLength() {
@@ -91,24 +81,47 @@ class Package {
         return $this->WeightUnit;
     }
 
+    public function getPackageVolume() {
+    	return $this->getLength() * $this->getWidth() * $this->getHeight();
+    }
+
     public function getItemVolume() {
     	return $this->ItemVolume;
     }
 
 	public function pack($length, $width, $height, $weight) {
+		$this->ItemCount += 1;
+		$this->ItemVolume += (float) $length * $width * $height;
+
 		$curr_dims = array($this->Length, $this->Width, $this->Height);
         sort($curr_dims);
 
         $new_dims = array($length, $width, $height);
         sort($new_dims);
-		
-		$this->Length = (float) $curr_dims[2] + $new_dims[0];
-		$this->Width = (float) $curr_dims[1] + $new_dims[1];
-		$this->Height = (float) $curr_dims[0] + $new_dims[2];
+
+        if ($this->ItemCount == 1) {
+        	// Add the largest item first
+        	$this->Length = $new_dims[2];
+        	$this->Width = $new_dims[1];
+        	$this->Height = $new_dims[0];
+        } elseif ($this->ItemCount == 2) {
+        	// Check the smallest package dimension requirement
+        	$this->Length = $curr_dims[2];
+        	$this->Width = ceil(sqrt($this->getPackageVolume()/$this->Length));
+        	$this->Height = $curr_dims[0] + $new_dims[0];
+        	if ($this->getPackageVolume() < $this->getItemVolume()) {
+        		$this->Width = ceil($this->getItemVolume()/($this->Length*$this->Height));
+        	}
+        } else {
+            // General case for 3+ items
+        	$this->Length = $curr_dims[2];
+        	if ($this->getPackageVolume() < $this->getItemVolume()) {
+        		$this->Width = ceil(sqrt($this->getItemVolume()/$this->Length));
+        		$this->Height = ceil($this->getItemVolume()/($this->Length*$this->Width));
+        	}
+        }
 
 		$this->Weight += (float) $weight;
-
-		$this->ItemVolume += (float) $length * $width * $height;
 	}
 
 }

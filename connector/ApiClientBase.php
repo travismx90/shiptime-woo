@@ -22,7 +22,7 @@ abstract class ApiClientBase
 		
 		$this->_wsdlUrl = $baseUrl . $wsdlUri;
 		
-		$this->_soapClient = new \SoapClient($this->_wsdlUrl, array('trace'=>1));
+		$this->_soapClient = new \SoapClient($this->_wsdlUrl, array('trace' => 1, 'cache_wsdl' => WSDL_CACHE_NONE));
 	}
 	
 	public function getLastReq() {
@@ -49,7 +49,7 @@ abstract class ApiClientBase
 		);
 
 		$soapReq = array(array('Key' => $key, 'Request' => get_object_vars($req)));
-
+		
 		$soapResp = $this->_soapClient->__soapCall($method, $soapReq)->Response; 
 		//$this->storeSessionId();
 		

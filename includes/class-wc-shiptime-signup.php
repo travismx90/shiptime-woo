@@ -39,7 +39,7 @@ class WC_ShipTime_Signup {
 		delete_transient( 'shiptime_signup_redirect' );
 		set_transient( 'shiptime_signup_required', 1, 0 ); // 0 = never expires
 
-		$row = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login GROUP BY id HAVING MIN(id)");
+		$row = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 		
 		$shiptime_activated = !empty($row);
 
@@ -188,11 +188,14 @@ class WC_ShipTime_Signup {
 			    box-shadow: 0 1px 1px 0 rgba(0,0,0,.1);
 			    padding: 12px;
 			}
+			div.wc-setup-content {
+				/*display: none;*/
+			}
 			</style>
 		</head>
 		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
 			<img src="http://www.shiptime.com/img/logo-shiptime.png" alt="ShipTime" />
-			<h1>Sign Up for Discounted USPS Shipping</h1>
+			<h1>ShipTime Profile</h1>
 			<?php 
 				if (isset($_SESSION['error'])) { 
 					$defaults = $_SESSION['defaults']; unset($_SESSION['defaults']);
@@ -236,11 +239,23 @@ class WC_ShipTime_Signup {
 							<tr>
 								<td class="page-name"><?php echo _x( 'Email', 'Page title', 'woocommerce' ); ?></td>
 								<td><input type="text" id="shiptime_email" name="shiptime_email" value="<?php echo esc_attr( $shiptime_email ) ; ?>" /></td>
+							</tr>							
+							<?php if (!$_GET['new_signup']) { ?>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Encrypted Username', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_user" name="shiptime_user" value="<?php echo esc_attr( $shiptime_user ) ; ?>" /></td>
 							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Encrypted Password', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_passwd" name="shiptime_passwd" value="<?php echo esc_attr( $shiptime_passwd ) ; ?>" /></td>
+							</tr>
+							<?php } else { ?>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Password', 'Page title', 'woocommerce' ); ?></td>
 								<td><input type="password" id="shiptime_passwd" name="shiptime_passwd" value="<?php echo esc_attr( $shiptime_passwd ) ; ?>" /></td>
 							</tr>
+							<?php } ?>
+							<tr>
 								<td class="page-name"><?php echo _x( 'Company', 'Page title', 'woocommerce' ); ?></td>
 								<td><input type="text" id="shiptime_company" name="shiptime_company" value="<?php echo esc_attr( $shiptime_company ) ; ?>" /></td>
 							</tr>
@@ -296,7 +311,7 @@ class WC_ShipTime_Signup {
 							</tr>																					
 						</tbody>
 					</table>
-					<p><input type="submit" class="button-primary button button-large" value="<?php esc_attr_e( 'Sign Up', 'woocommerce' ); ?>" name="shiptime_signup" /></p>
+					<p><input type="submit" class="button-primary button button-large" value="Sign Up" name="shiptime_signup" /></p>
 					<?php wp_nonce_field( 'shiptime-signup' ); ?>
 				</form>
 			</div>
@@ -323,6 +338,7 @@ class WC_ShipTime_Signup {
 		$shiptime_company = sanitize_text_field($_POST['shiptime_company']);
 		$shiptime_country = sanitize_text_field($_POST['shiptime_country']);
 		$shiptime_email = sanitize_text_field($_POST['shiptime_email']);
+		$shiptime_user = sanitize_text_field($_POST['shiptime_user']);
 		$shiptime_passwd = sanitize_text_field($_POST['shiptime_passwd']);
 		$shiptime_first_name = sanitize_text_field($_POST['shiptime_first_name']);
 		$shiptime_last_name = sanitize_text_field($_POST['shiptime_last_name']);
@@ -332,69 +348,119 @@ class WC_ShipTime_Signup {
 		$shiptime_postal_code = sanitize_text_field($_POST['shiptime_postal_code']);
 		$shiptime_state = sanitize_text_field($_POST['shiptime_state']);
 
-		// Submit Request
-		require_once(dirname(__FILE__).'/../connector/SignupClient.php');
-		$signupClient = new emergeit\SignupClient(); 
-
-		$req = new emergeit\SignupRequest();
-
-		$req->IntegrationID = "85566cfb-9d0e-421b-bc78-649a1711a3ea"; // hard-coded
-		$req->Address = $shiptime_address;
-		$req->City = $shiptime_city;
-		$req->CompanyName = $shiptime_company;
-		$req->Country = $shiptime_country;
-		$req->Email = $shiptime_email;
-		$req->Password = $shiptime_passwd;
-		$req->FirstName = $shiptime_first_name;
-		$req->LastName = $shiptime_last_name;
-		$req->Language = $shiptime_lang;
-		$req->Phone = $shiptime_phone;
-		$req->PostalCode = $shiptime_postal_code;
-		$req->State = $shiptime_state;
-
-		$resp = $signupClient->signup($req);
-
-		if (!empty($resp->key->EncryptedUsername)) {
-			// Success
-			$wpdb->insert(
-				"{$wpdb->prefix}shiptime_login", 
-				array(
-					'username' => $resp->key->EncryptedUsername, 
-					'password' => $resp->key->EncryptedPassword,
-					'first_name' => $shiptime_first_name,
-					'last_name' => $shiptime_last_name,
-					'email' => $shiptime_email,
-					'company' => $shiptime_company,
-					'address' => $shiptime_address,
-					'country' => $shiptime_country,
-					'city' => $shiptime_city,
-					'state' => $shiptime_state,
-					'zip' => $shiptime_postal_code,
-					'phone' => $shiptime_phone,
-					'lang' => $shiptime_lang
-				)
-			);
-			delete_transient( 'shiptime_signup_required' );
-			set_transient( 'shiptime_signup_success', 1, 30 );
+		if (!empty($shiptime_user)) {
+			// Current ShipTime Merchant: Store Info.
+			$shiptime_login = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
+			$shiptime_login_id = empty($shiptime_login) ? 0 : $shiptime_login->id;
+			if (empty($shiptime_login_id)) {
+				$wpdb->insert(
+					"{$wpdb->prefix}shiptime_login", 
+					array(
+						'username' => $shiptime_user, 
+						'password' => $shiptime_passwd,
+						'first_name' => $shiptime_first_name,
+						'last_name' => $shiptime_last_name,
+						'email' => $shiptime_email,
+						'company' => $shiptime_company,
+						'address' => $shiptime_address,
+						'country' => $shiptime_country,
+						'city' => $shiptime_city,
+						'state' => $shiptime_state,
+						'zip' => $shiptime_postal_code,
+						'phone' => $shiptime_phone,
+						'lang' => $shiptime_lang
+					)
+				);
+				delete_transient( 'shiptime_signup_required' );
+				set_transient( 'shiptime_signup_success', 1, 30 );
+			} else {
+				$wpdb->update(
+					"{$wpdb->prefix}shiptime_login", 
+					array(
+						'username' => $shiptime_user, 
+						'password' => $shiptime_passwd,
+						'first_name' => $shiptime_first_name,
+						'last_name' => $shiptime_last_name,
+						'email' => $shiptime_email,
+						'company' => $shiptime_company,
+						'address' => $shiptime_address,
+						'country' => $shiptime_country,
+						'city' => $shiptime_city,
+						'state' => $shiptime_state,
+						'zip' => $shiptime_postal_code,
+						'phone' => $shiptime_phone,
+						'lang' => $shiptime_lang
+					),
+					array( 'id' => $shiptime_login_id )
+				);
+			}
 			wp_redirect( admin_url() );
 			exit;
 		} else {
-			// Failure
-			$_SESSION['error'] = array_shift($resp->Messages)->Text;
-			$_SESSION['defaults'] = array(
-				'shiptime_address' => $shiptime_address,
-				'shiptime_city' => $shiptime_city,
-				'shiptime_company' => $shiptime_company,
-				'shiptime_country' => $shiptime_country,
-				'shiptime_email' => $shiptime_email,
-				'shiptime_passwd' => $shiptime_passwd,
-				'shiptime_first_name' => $shiptime_first_name,
-				'shiptime_last_name' => $shiptime_last_name,
-				'shiptime_lang' => $shiptime_lang,
-				'shiptime_phone' => $shiptime_phone,
-				'shiptime_postal_code' => $shiptime_postal_code,
-				'shiptime_state' => $shiptime_state
-			);
+			// New ShipTime Merchant: Submit Signup Request
+			require_once(dirname(__FILE__).'/../connector/SignupClient.php');
+			$signupClient = new emergeit\SignupClient(); 
+
+			$req = new emergeit\SignupRequest();
+
+			$req->IntegrationID = "85566cfb-9d0e-421b-bc78-649a1711a3ea";
+			$req->Address = $shiptime_address;
+			$req->City = $shiptime_city;
+			$req->CompanyName = $shiptime_company;
+			$req->Country = $shiptime_country;
+			$req->Email = $shiptime_email;
+			$req->Password = $shiptime_passwd;
+			$req->FirstName = $shiptime_first_name;
+			$req->LastName = $shiptime_last_name;
+			$req->Language = $shiptime_lang;
+			$req->Phone = $shiptime_phone;
+			$req->PostalCode = $shiptime_postal_code;
+			$req->State = $shiptime_state;
+
+			$resp = $signupClient->signup($req);
+
+			if (!empty($resp->key->EncryptedUsername)) {
+				// Success
+				$wpdb->insert(
+					"{$wpdb->prefix}shiptime_login", 
+					array(
+						'username' => $resp->key->EncryptedUsername, 
+						'password' => $resp->key->EncryptedPassword,
+						'first_name' => $shiptime_first_name,
+						'last_name' => $shiptime_last_name,
+						'email' => $shiptime_email,
+						'company' => $shiptime_company,
+						'address' => $shiptime_address,
+						'country' => $shiptime_country,
+						'city' => $shiptime_city,
+						'state' => $shiptime_state,
+						'zip' => $shiptime_postal_code,
+						'phone' => $shiptime_phone,
+						'lang' => $shiptime_lang
+					)
+				);
+				delete_transient( 'shiptime_signup_required' );
+				set_transient( 'shiptime_signup_success', 1, 30 );
+				wp_redirect( admin_url() );
+				exit;
+			} else {
+				// Failure
+				$_SESSION['error'] = array_shift($resp->Messages)->Text;
+				$_SESSION['defaults'] = array(
+					'shiptime_address' => $shiptime_address,
+					'shiptime_city' => $shiptime_city,
+					'shiptime_company' => $shiptime_company,
+					'shiptime_country' => $shiptime_country,
+					'shiptime_email' => $shiptime_email,
+					'shiptime_passwd' => $shiptime_passwd,
+					'shiptime_first_name' => $shiptime_first_name,
+					'shiptime_last_name' => $shiptime_last_name,
+					'shiptime_lang' => $shiptime_lang,
+					'shiptime_phone' => $shiptime_phone,
+					'shiptime_postal_code' => $shiptime_postal_code,
+					'shiptime_state' => $shiptime_state
+				);
+			}
 		}
 	}
 
@@ -408,16 +474,108 @@ class WC_ShipTime_Signup {
 		<head>
 			<meta name="viewport" content="width=device-width" />
 			<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-			<title><?php _e( 'WooCommerce &rsaquo; Setup Wizard', 'woocommerce' ); ?></title>
+			<title>ShipTime Profile Details</title>
 			<?php wp_print_scripts( 'shiptime-signup' ); ?>
 			<?php do_action( 'admin_print_styles' ); ?>
 			<?php do_action( 'admin_head' ); ?>
 		</head>
 		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
 			<img src="http://www.shiptime.com/img/logo-shiptime.png" alt="ShipTime" />
-			<h1>Discounted USPS Shipping</h1>
+			<h1>Update ShipTime Profile</h1>
+			<p>The following information is used when processing shipments from your WooCommerce orders.</p>
+			<?php
+				global $wpdb;
+				$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
+			?>
 			<div class="wc-setup-content">
-				<p>You have already signed up for a ShipTime account for discounted shipping rates.  Go to <a target='_new' href='http://shiptime.com'>shiptime.com</a> to login to your account. There you can modify account settings or view your historical shipments to see how much money you have saved on shipping.</p>
+				<form method="post">
+					<table class="wc-setup-pages form-table" cellspacing="0">
+						<thead>
+							<tr>
+								<th class="page-name"><?php _e( 'Option', 'woocommerce' ); ?></th>
+								<th class="page-description"><?php _e( 'Value', 'woocommerce' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="page-name"><?php echo _x( 'First Name', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_first_name" name="shiptime_first_name" value="<?php echo esc_attr( $shiptime_auth->first_name ) ; ?>" /></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Last Name', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_last_name" name="shiptime_last_name" value="<?php echo esc_attr( $shiptime_auth->last_name ) ; ?>" /></td>							
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Email', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_email" name="shiptime_email" value="<?php echo esc_attr( $shiptime_auth->email ) ; ?>" /></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Encrypted Username', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_user" name="shiptime_user" value="<?php echo esc_attr( $shiptime_auth->username ) ; ?>" /></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Encrypted Password', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_passwd" name="shiptime_passwd" value="<?php echo esc_attr( $shiptime_auth->password ) ; ?>" /></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Company', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_company" name="shiptime_company" value="<?php echo esc_attr( $shiptime_auth->company ) ; ?>" /></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Address', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_address" name="shiptime_address" value="<?php echo esc_attr( $shiptime_auth->address ) ; ?>" /></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Country', 'Page title', 'woocommerce' ); ?></td>
+								<td>			
+									<select onchange="submit()" name="shiptime_country" style="height:28px !important">
+										<option value=""><?php _e( 'Select a country&hellip;', 'woocommerce' ); ?></option>
+									<?php
+										$shiptime_country = $shiptime_auth->country;
+										foreach( WC()->countries->get_shipping_countries() as $key => $value )
+											echo '<option value="' . esc_attr( $key ) . '"' . ($key==$shiptime_country ? ' selected' : '') . '>' . esc_html( $value ) . '</option>';
+									?>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'City', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_city" name="shiptime_city" value="<?php echo esc_attr( $shiptime_auth->city ) ; ?>" /></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'State', 'Page title', 'woocommerce' ); ?></td>
+								<td>									
+									<select name="shiptime_state" style="height:28px !important">
+										<option value=""><?php _e( 'Select a state&hellip;', 'woocommerce' ); ?></option>
+									<?php
+										foreach( WC()->countries->get_states( $shiptime_country ) as $ckey => $cvalue )
+											echo '<option value="' . esc_attr( $ckey ) . '" ' . selected( $shiptime_auth->state, $ckey, false ) . '>' . __( esc_html( $cvalue ), 'woocommerce' ) .'</option>';
+									?>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Postal Code', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_postal_code" name="shiptime_postal_code" value="<?php echo esc_attr( $shiptime_auth->zip ) ; ?>" /></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Phone', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_phone" name="shiptime_phone" value="<?php echo esc_attr( $shiptime_auth->phone ) ; ?>" /></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Language', 'Page title', 'woocommerce' ); ?></td>
+								<td>
+									<select name="shiptime_lang" style="height:28px !important">
+										<option value="EN"<?php echo selected( $shiptime_auth->lang, 'EN', false ); ?>><?php _e( 'English (EN)', 'woocommerce' ); ?></option>
+										<option value="FR"<?php echo selected( $shiptime_auth->lang, 'FR', false ); ?>><?php _e( 'French (FR)', 'woocommerce' ); ?></option>
+									</select>
+								</td>
+							</tr>																					
+						</tbody>
+					</table>
+					<p><input type="submit" class="button-primary button button-large" value="Update Profile" name="shiptime_signup" /></p>
+					<?php wp_nonce_field( 'shiptime-signup' ); ?>
+				</form>
 			</div>
 			<a class="wc-return-to-dashboard" href="<?php echo esc_url( admin_url() ); ?>"><?php _e( 'Return to the WordPress Dashboard', 'woocommerce' ); ?></a>
 		</body>

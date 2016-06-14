@@ -18,7 +18,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
     public function __construct() {
         $this->id = 'shiptime';
         $this->title = $this->method_title = 'ShipTime';
-        $this->method_description = 'The <strong>ShipTime</strong> plugin obtains rates in real time from the ShipTime API during cart/checkout.';
+        $this->method_description = 'The <strong>ShipTime</strong> plugin obtains rates in real time from the ShipTime web service during cart/checkout.';
         $this->init();
     }
 
@@ -37,10 +37,13 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 
         // Define user set variables
         $this->debug = isset($this->settings['debug_mode']) && $this->settings['debug_mode'] == 'yes' ? true : false;
-        $this->enabled = isset($this->settings['enabled']) ? $this->settings['enabled'] : $this->enabled;
+        $this->enabled = isset($this->settings['enabled']) ? $this->settings['enabled'] : false;
+        $this->turnaround_days = isset($this->settings['turnaround_days']) ? $this->settings['turnaround_days'] : 1;
         $this->boxes = isset($this->settings['boxes']) ? $this->settings['boxes'] : array();
-        $this->fallback_type = isset($this->settings['fallback_type']) ? $this->settings['fallback_type'] : $this->fallback_type;
-        $this->fallback_fee = isset($this->settings['fallback_fee']) ? $this->settings['fallback_fee'] : $this->fallback_fee;
+        $this->services = isset($this->settings['services']) ? $this->settings['services'] : array();
+        $this->fallback_type = isset($this->settings['fallback_type']) ? $this->settings['fallback_type'] : '';
+        $this->fallback_fee = isset($this->settings['fallback_fee']) ? $this->settings['fallback_fee'] : '';
+        $this->fallback_max = isset($this->settings['fallback_max']) ? $this->settings['fallback_max'] : '';
         $this->shipping_threshold = isset($this->settings['cart_threshold']) ? $this->settings['cart_threshold'] : 0;
 
         // ShipTime API credentials
@@ -84,7 +87,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                 'title' => 'Enable/Disable',
                 'type' => 'checkbox',
                 'label' => 'Enable this shipping method',
-                'default' => 'no'
+                'default' => 'yes'
             ),
             'debug_mode' => array(
                 'title' => 'Debug Mode',
@@ -92,6 +95,16 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                 'type' => 'checkbox',
                 'default' => 'no',
                 'description' => 'Enable debug mode to show debugging data for ship rates in your cart. Only you, not your customers, can view this debug data.'
+            ),
+            'turnaround_days' => array(
+                'title' => 'Turnaround Days',
+                'type' => 'number',
+                'description' => 'Enter the number of business days it takes to process a new order. This is added to shipment transit days to calculate estimated delivery.',
+                'custom_attributes' => array(
+                    'step' => '1',
+                    'min' => '0'
+                ),
+                'default' => '0'
             ),            
             'cart_threshold' => array(
                 'title' => 'Free Shipping Promotion',
@@ -124,12 +137,12 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                 'description' => 'Enable full list of shipping services to support international shipments.'
             ),           
             'services'  => array(
-                'type'  => 'shipping_services'
+                'type'  => 'shipping_service'
             ),            
             'fallback' => array(
                 'title' => 'Fallback Rate',
                 'type' => 'title',
-                'description' => 'Default rate if the API cannot be reached or if no rates are found.'
+                'description' => 'Default rate if ShipTime cannot be reached or if no rates are found.'
             ),
             'fallback_type' => array(
                 'title' => 'Type',
@@ -150,17 +163,51 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                     'step' => '0.01',
                     'min' => '0'
                 )
+            ),
+            'fallback_max' => array(
+                'title' => 'Maximum Amount',
+                'type' => 'number',
+                'description' => 'Set a maximum amount when fallback rate is used.',
+                'custom_attributes' => array(
+                    'step' => '0.01',
+                    'min' => '0'
+                )
             )
         );
     }
 
     /**
-     * generate_services_html function.
+     * generate html function for 'shipping_service' form field type.
      */
-    public function generate_shipping_services_html() {
+    public function generate_shipping_service_html() {
         ob_start();
-        include(dirname(__FILE__).'/../includes/shipping-services-html.php');
+        include(dirname(__FILE__).'/../html/shipping-services-html.php');
         return ob_get_clean();
+    }
+
+    /**
+     * validate function for 'shipping_service' form field type.
+     *
+     * @access public
+     * @param mixed $key
+     * @return void
+     */
+    public function validate_shipping_service_field( $key ) {
+        $services = array();
+        $data = $_POST['services'];
+
+        foreach ($data as $serviceId => $options) {
+            $services[wc_clean($serviceId)] = array(
+                'id' => wc_clean($serviceId),
+                'name' => wc_clean($options['name']),
+                'intl' => wc_clean($options['intl']),
+                'enabled' => wc_clean($options['enabled']),
+                'markup_fixed' => wc_clean($options['markup_fixed']),
+                'markup_percentage' => wc_clean($options['markup_percentage'])
+            );
+        }
+
+        return $services;
     }
 
     /**
@@ -168,7 +215,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
      */
     public function generate_box_config_html() {
         ob_start();
-        include(dirname(__FILE__).'/../includes/box-config-html.php');
+        include(dirname(__FILE__).'/../html/box-config-html.php');
         return ob_get_clean();
     }
 
@@ -221,8 +268,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
      * @param mixed $package
      * @return void
      */
-
-    public function calculate_shipping($package) {
+    public function calculate_shipping( $package = array() ) {
         global $wpdb;
         global $woocommerce;
         global $current_user;
@@ -230,7 +276,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
         // WooCommerce currency setting
         $base_currency = get_woocommerce_currency();
 
-        // WordPress admin? Useful if implementing debug mode for merchants.
+        // Must be WP admin to see Debug output
         $is_admin = (!empty($current_user->roles) && in_array('administrator', $current_user->roles)) ? true : false;
 
         if (is_object($this->shiptime_auth)) {
@@ -291,10 +337,17 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                     $item["quantity"] = $values['quantity'];
                     $item["value"] = $values['data']->get_price();
                     $item["weight"] = woocommerce_get_weight($values['data']->get_weight(), 'lbs');
-                    if ($values['data']->length && $values['data']->height && $values['data']->width) {
+                    // If no weight set for product assume 1 lb
+                    $item["weight"] = !empty($item["weight"]) ? $item["weight"] : 1;
+                    if (!empty($values['data']->length) && !empty($values['data']->height) && !empty($values['data']->width)) {
                         $item["length"] = woocommerce_get_dimension($values['data']->length, 'in');
                         $item["width"] = woocommerce_get_dimension($values['data']->width, 'in');
                         $item["height"] = woocommerce_get_dimension($values['data']->height, 'in');                        
+                    } else {
+                        // If no L,W,H set for product assume 1x1x1 in
+                        $item["length"] = 1;
+                        $item["width"] = 1;
+                        $item["height"] = 1;    
                     }
 
                     // Add this item to array
@@ -387,6 +440,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                     $shipRates = $this->ratingClient->getRates($req);
 
                     if ($shipRates) {
+                        // Cache quote data for 30 mins
                         set_transient($transient, serialize($shipRates), 30 * MINUTE_IN_SECONDS);
                     }
                 }
@@ -399,9 +453,8 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                 }
 
                 if (!empty($shipRates->AvailableRates)) {
-                    // Store response in the current user's session
+                    // Store response into DB
                     // Used to retrieve package level details later
-                    //$woocommerce->session->shiptime_response = $shipRates;
                     if (!$cached) {
                         $wpdb->insert(
                             $wpdb->prefix.'shiptime_quote',
@@ -419,20 +472,49 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 
                     foreach ($shipRates->AvailableRates as $shipRate) {
                         // Add Rate
-                        $l = strpos($shipRate->ServiceName, $shipRate->CarrierName) !== false ? $shipRate->ServiceName : $shipRate->CarrierName . " ". $shipRate->ServiceName;
-                        $c = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0 : $shipRate->TotalCharge->Amount/100.00;
-                        $rate = array(
-                            'id'    => $this->id . ':' . $shipRate->ServiceId,
-                            'label' => $l,
-                            'cost'  => $c
-                        );
-                        $this->add_rate($rate);
+                        $l = (strpos($shipRate->ServiceName, $shipRate->CarrierName) !== false ? $shipRate->ServiceName : $shipRate->CarrierName . " ". $shipRate->ServiceName) . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
+                        $c = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0.00 : $shipRate->TotalCharge->Amount/100.00;
+                        if ($c == 0) $l .= " (FREE)";
+                        if ($this->services[$shipRate->ServiceId]['enabled'] == 'on') {
+                            $markup_fixed = $this->services[$shipRate->ServiceId]['markup_fixed'];
+                            $markup_fixed = is_numeric($markup_fixed) && !empty($markup_fixed) ? $markup_fixed : 0;
+                            $markup_percentage = $this->services[$shipRate->ServiceId]['markup_percentage'];
+                            $markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage/100.00 + 1 : 0;
+                            if (!empty($c)) {
+                                if (!empty($markup_fixed)) {
+                                    $c += $markup_fixed;
+                                } elseif (!empty($markup_percentage)) {
+                                    $base_charge = $shipRate->BaseCharge->Amount/100.00;
+                                    $fuel_charge = 0;
+                                    $accessorial_charge = 0;
+                                    foreach ($shipRate->Surcharges as $surcharge) {
+                                        if ($surcharge->Code == 'FUEL') {
+                                            $fuel_charge += $surcharge->Price->Amount/100.00;
+                                        } else {
+                                            $accessorial_charge += $surcharge->Price->Amount/100.00;
+                                        }
+                                    }
+                                    $tax_charge = 0;
+                                    foreach ($shipRate->Taxes as $tax) {
+                                        $tax_charge += $tax->Price->Amount/100.00;
+                                    }
+                                    $c = (($base_charge + $fuel_charge + $tax_charge) * $markup_percentage) + $accessorial_charge;
+                                }
+                            }
+                            $rate = array(
+                                'id'    => $this->id . ':' . $shipRate->ServiceId,
+                                'label' => $l,
+                                'cost'  => $c
+                            );
+                            $this->add_rate($rate);
+                        }
                     }
 
                 } else {
                     // Add fallback shipping rate if merchant has configured this setting
                     if (!empty($this->fallback_type) && !empty($this->fallback_fee)) {
                         $cost = $this->fallback_type === 'per_order' ? $this->fallback_fee : $woocommerce->cart->cart_contents_count * $this->fallback_fee;
+                        if (!empty($this->fallback_max) && $this->fallback_type !== 'per_order' && $cost > $this->fallback_max) { $cost = $this->fallback_max; }
                         $rate = array(
                             'id' => $this->id . '_fallback_rate',
                             'label' => 'Shipping',
