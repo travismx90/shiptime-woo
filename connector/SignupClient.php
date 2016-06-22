@@ -7,10 +7,9 @@ require_once('types.php');
 
 class SignupClient extends ApiClientBase
 {
+	//private $_defaultBaseUrl = 'http://ship.emergeit.com/api';
 	//private $_defaultBaseUrl = 'http://ship.appspace.ca/api';
 	private $_defaultBaseUrl = 'http://sandbox.shiptime.com/api';
-
-	private $_soapClient = null;
 	
 	public function __construct($baseUrl=null, $wsdlUri=null)
 	{	
@@ -19,7 +18,7 @@ class SignupClient extends ApiClientBase
 			$baseUrl = $this->_defaultBaseUrl;
 		}
 	
-		parent::__construct($encUsername, $encPassword, $baseUrl, 'signup?wsdl');
+		parent::__construct(null, null, $baseUrl, 'signup?wsdl');
 	}
 
 	public function signup(SignupRequest $req)

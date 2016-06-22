@@ -22,9 +22,11 @@
 			    }
 				?>
 				<?php
+					global $wpdb;
 					$shipping_services = array();
-					$encUser = "5995FB7ED3E41BD84CB255658DA65D54";
-					$encPass = "9E0D90FF89ACA4F2632894850DC7A918";
+					$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
+					$encUser = $shiptime_auth->username;
+					$encPass = $shiptime_auth->password;
 					$signupClient = new emergeit\SignupClient();
 					$req = new emergeit\GetServicesRequest();
 					$req->IntegrationID = "85566cfb-9d0e-421b-bc78-649a1711a3ea";
@@ -61,6 +63,8 @@
 				        'USPS Express Mail International'
 					);
 
+					$shiptime_settings = get_option('woocommerce_shiptime_settings');
+
 					foreach ( $this->available_services as $serviceName => $serviceId ) {
 						$intl = false;
 						$name = strpos($serviceName, $shipping_services[$serviceId]['CarrierName']) !== false ? $serviceName : $shipping_services[$serviceId]['CarrierName'] . " " . $serviceName;
@@ -76,7 +80,7 @@
 							</td>
 							<td>
 								<label>
-									<input type="checkbox" name="services[<?php echo $serviceId; ?>][enabled]" <?php checked( ( ! isset( $this->services[$serviceId]['enabled'] ) || ! empty( $this->services[$serviceId]['enabled'] ) ), true ); ?> />
+									<input type="checkbox" name="services[<?php echo $serviceId; ?>][enabled]" <?php checked( (isset($this->services[$serviceId]['enabled']) || $shiptime_settings === false ), true ); ?> />
 								</label>
 							</td>
 							<td>

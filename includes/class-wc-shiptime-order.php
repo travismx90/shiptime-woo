@@ -142,6 +142,7 @@ class WC_Order_ShipTime {
 	}
 
 	function wc_order_shiptime_init() {
+		if (!isset($_GET['post'])) return;
 		global $wpdb;
 
 		$oid = trim($_GET['post']);
@@ -152,12 +153,14 @@ class WC_Order_ShipTime {
 		$this->shiptime_data = array();
 
 		$shiptime_settings = get_option('woocommerce_shiptime_settings');
-		foreach ($shiptime_settings['services'] as $serviceId => $data) {
-			if ($data['enabled'] == 'on') {
-				if ($data['intl'] == '1') {
-					$this->shiptime_intl[$data['name']] = $serviceId;
-				} else {
-					$this->shiptime_domestic[$data['name']] = $serviceId;
+		if ($shiptime_settings && array_key_exists('services', $shiptime_settings)) {
+			foreach ($shiptime_settings['services'] as $serviceId => $data) {
+				if ($data['enabled'] == 'on') {
+					if ($data['intl'] == '1') {
+						$this->shiptime_intl[$data['name']] = $serviceId;
+					} else {
+						$this->shiptime_domestic[$data['name']] = $serviceId;
+					}
 				}
 			}
 		}
@@ -302,7 +305,7 @@ class WC_Order_ShipTime {
 					<span style='width:50px;display:inline-block'><strong>Width:</strong></span><input type="text" name="parcel_width_<?= $i+1; ?>" id="parcel_width_<?= $i+1; ?>" value="<?= $this->arr_check($pkgs[$i], 'width'); ?>" size="3" />&nbsp;<?=$this->dim_uom;?><br>
 					<span style='width:50px;display:inline-block'><strong>Height:</strong></span><input type="text" name="parcel_height_<?= $i+1; ?>" id="parcel_height_<?= $i+1; ?>" value="<?= $this->arr_check($pkgs[$i], 'height'); ?>" size="3" />&nbsp;<?=$this->dim_uom;?><br>
 					Selected Box: <?php echo '<strong>' . (!empty($boxs[$i]) ? $boxs[$i] : 'N/A') . '</strong>'; ?><br>
-					<a href="#TB_inline?width=600&height=480&inlineId=choose-box" class="thickbox">Change box</a>&nbsp; or &nbsp;<a href="#TB_inline?width=600&height=480&inlineId=add-box" class="thickbox">Add new box</a>
+					<a href="#TB_inline?width=600&height=480&inlineId=choose-box" class="thickbox" onClick="changeBox(<?php echo $i; ?>)">Change box</a>&nbsp; or &nbsp;<a href="#TB_inline?width=600&height=480&inlineId=add-box" class="thickbox">Add new box</a>
 					<?php add_thickbox(); ?>
 					<div id="choose-box" style="display:none;">
 						<h2>Select Box Configuration for Shipment</h2>
@@ -319,7 +322,7 @@ class WC_Order_ShipTime {
 						</p>
 						<script type="text/javascript">
 							jQuery("a.choose_box").on("click", function() {
-							   location.href = this.href + '&shiptime_box=' + jQuery(".choose_box:checked").val();
+							   location.href = this.href + '&shiptime_box=' + jQuery(".choose_box:checked").val() + '&pkg=' + lastId;
 							   return false;
 							});
 						</script>
@@ -411,7 +414,7 @@ class WC_Order_ShipTime {
 				</p>
 				<script type="text/javascript">
 					jQuery("a.choose_box").on("click", function() {
-					   location.href = this.href + '&shiptime_box=' + jQuery(".choose_box:checked").val();
+					   location.href = this.href + '&shiptime_box=' + jQuery(".choose_box:checked").val() + '&pkg=' + lastId;
 					   return false;
 					});
 				</script>
@@ -447,6 +450,13 @@ class WC_Order_ShipTime {
 				    return false;
 				});
 			</script>
+			<script type="text/javascript">
+				var lastId;
+
+				function changeBox(id) {
+					lastId = id;
+				}
+			</script>		
 		<?php 
 		}
 		else {
@@ -904,8 +914,6 @@ class WC_Order_ShipTime {
 		$shiptime_pkgs = unserialize($shiptime_data->package_data);
 		$shiptime_boxs = unserialize($shiptime_data->box_codes);
 		$shiptime_settings = get_option('woocommerce_shiptime_settings');
-		
-		$shiptime_boxs[] = $box;
 
 		foreach ($shiptime_settings['boxes'] as $b) {
 			if ($b['label'] == $box) {
@@ -915,6 +923,7 @@ class WC_Order_ShipTime {
 					'width'  => $b['outer_width'],
 					'height' => $b['outer_height']
 				);
+				$shiptime_boxs[] = $box;
 				break;
 			}
 		}
@@ -950,7 +959,6 @@ class WC_Order_ShipTime {
 		$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
 		$shiptime_pkgs = unserialize($shiptime_data->package_data);
 		$shiptime_boxs = unserialize($shiptime_data->box_codes);
-		$shiptime_settings_settings = get_option('woocommerce_shiptime_settings_settings');
 		
 		if (count($shiptime_boxs) > $pid) {
 			unset($shiptime_boxs[$pid]);

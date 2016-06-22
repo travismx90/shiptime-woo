@@ -4,7 +4,7 @@
 	Plugin URI: http://www.shiptime.com
 	Description: Real-time shipping rates, label printing, and shipment tracking for your WooCommerce orders.
 	Version: 1.0.0
-	Author: ShipTime
+	Author: shiptime
 	Author URI: http://www.shiptime.com
 
 	Copyright: 2016 ShipTime
@@ -262,6 +262,8 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			if ($screen->base == 'woocommerce_page_wc-settings') {
 				wp_enqueue_script('shiptime-settings', plugins_url('js/wc-shiptime-shipping-settings.js', __FILE__), array('jquery'), null, true);
 			}
+
+			wp_enqueue_script('shiptime-loading', plugins_url('js/wc-shiptime-loading.js', __FILE__), array('jquery'), null, true);
 		}
 
 	}
