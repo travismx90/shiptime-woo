@@ -6,9 +6,9 @@
 			<thead>
 				<th>&nbsp; Service</th>
 				<th>&nbsp; Carrier</th>
-				<th>Enabled?</th>
-				<th><?php echo sprintf('Markup (%s)', get_woocommerce_currency_symbol()); ?></th>
-				<th>Markup (%)</th>
+				<th class="check-column" style="padding:20px 10px 20px 0 !important">Enabled?<input style="margin-left:1px" type="checkbox" /></th>
+				<th>&nbsp; &nbsp;<?php echo sprintf('Markup (%s)', get_woocommerce_currency_symbol()); ?></th>
+				<th>&nbsp; &nbsp;Markup (%)</th>
 			</thead>
 			<tbody>
 				<?php
@@ -78,7 +78,7 @@
 							<td>
 								<?php echo $shipping_services[$serviceId]['CarrierName']; ?>
 							</td>
-							<td>
+							<td class="check-column">
 								<label>
 									<input type="checkbox" name="services[<?php echo $serviceId; ?>][enabled]" <?php checked( (isset($this->services[$serviceId]['enabled']) || $shiptime_settings === false ), true ); ?> />
 								</label>

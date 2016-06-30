@@ -90,9 +90,13 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		      quoted_rate decimal(8,2) NOT NULL,
 		      markup_rate decimal(8,2) NOT NULL,
 		      recalc_rate decimal(8,2) NOT NULL,
+		      taxes decimal(8,2) NOT NULL,
 		      UNIQUE KEY id (id)
 		    ) $charset_collate;";
-		    dbDelta( $sql );			
+		    dbDelta( $sql );
+
+		    $sql = "ALTER TABLE $table_name ADD COLUMN taxes decimal(8,2) NOT NULL AFTER recalc_rate";
+		    $wpdb->query( $sql );
 
 			// Table: shiptime_quote
 		    $table_name = $wpdb->prefix . 'shiptime_quote';
@@ -106,6 +110,25 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		      UNIQUE KEY id (id)
 		    ) $charset_collate;";
 		    dbDelta( $sql );
+
+		    if (!$wpdb->query("SELECT * FROM wp_woocommerce_tax_rates WHERE tax_rate_name = 'ShipTime'")) {
+			    // 0% tax for shipping (handled by ShipTime)
+				$shiptime_tax_rate = array(
+					'tax_rate_country'  => '',
+					'tax_rate_state'    => '',
+					'tax_rate'          => 0.00,
+					'tax_rate_name'     => 'ShipTime',
+					'tax_rate_priority' => 1,
+					'tax_rate_compound' => 0,
+					'tax_rate_shipping' => 1,
+					'tax_rate_order'    => 0,
+					'tax_rate_class'    => 'zero-rate'
+				);
+				WC_Tax::_insert_tax_rate( $shiptime_tax_rate );
+			}
+
+			// Shipping Tax Class: Zero Rate
+			update_option('woocommerce_shipping_tax_class', 'zero-rate');
 		}	
 
 		// Files to load every time class is instantiated
@@ -151,16 +174,6 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");
 			$woo_order = new WC_Order($order_id);
 			$shipping_method = trim(array_shift(explode('[', $woo_order->get_shipping_method())));
-
-			$quoted_rate = 0;
-
-			$q = unserialize($quote->quote);
-			foreach ($q->AvailableRates as $r) {
-				if ($r->ServiceName == $shipping_method) {
-					$quoted_rate = $r->TotalCharge->Amount/100.00;
-					break;
-				}
-			}
 
 			// associate woo order id with cart session id
 			$wpdb->update( 

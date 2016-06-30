@@ -73,19 +73,21 @@ class ShipmentBuilder {
 		// used if merchant does not configure any boxes.
 		$max_l = 24;
 		$max_w = 20;
-		$max_h = 18;
+		$max_h = 18;			
 		$boxs = array();
-		foreach ($boxes as $b) {
-			$box = new Box($b['label'], $b['outer_length'], $b['outer_width'], $b['outer_height'], $b['inner_length'], $b['inner_width'], $b['inner_height'], $b['weight']);
-			$boxs[] = $box;
-		}
-		$boxs = Box::sortBoxes($boxs);
-		foreach ($boxs as $b) {
-			if ($b->getLength() + 2*($b->getWidth() + $b->getHeight()) <= 108) {
-				$max_l = $b->getInnerLength();
-				$max_w = $b->getInnerWidth();
-				$max_h = $b->getInnerHeight();
-				break;
+		if (!empty($boxes)) {
+			foreach ($boxes as $b) {
+				$box = new Box($b['label'], $b['outer_length'], $b['outer_width'], $b['outer_height'], $b['inner_length'], $b['inner_width'], $b['inner_height'], $b['weight']);
+				$boxs[] = $box;
+			}
+			$boxs = Box::sortBoxes($boxs);
+			foreach ($boxs as $b) {
+				if ($b->getLength() + 2*($b->getWidth() + $b->getHeight()) <= 108) {
+					$max_l = $b->getInnerLength();
+					$max_w = $b->getInnerWidth();
+					$max_h = $b->getInnerHeight();
+					break;
+				}
 			}
 		}
 		foreach ($this->Items as $item) {

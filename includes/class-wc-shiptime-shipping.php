@@ -38,13 +38,13 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
         // Define user set variables
         $this->debug = isset($this->settings['debug_mode']) && $this->settings['debug_mode'] == 'yes' ? true : false;
         $this->enabled = isset($this->settings['enabled']) ? $this->settings['enabled'] : false;
-        $this->turnaround_days = isset($this->settings['turnaround_days']) ? $this->settings['turnaround_days'] : 1;
+        $this->turnaround_days = isset($this->settings['turnaround_days']) && (int)$this->settings['turnaround_days'] >= 0 ? $this->settings['turnaround_days'] : 1;
         $this->boxes = isset($this->settings['boxes']) ? $this->settings['boxes'] : array();
         $this->services = isset($this->settings['services']) ? $this->settings['services'] : array();
         $this->fallback_type = isset($this->settings['fallback_type']) ? $this->settings['fallback_type'] : '';
         $this->fallback_fee = isset($this->settings['fallback_fee']) ? $this->settings['fallback_fee'] : '';
         $this->fallback_max = isset($this->settings['fallback_max']) ? $this->settings['fallback_max'] : '';
-        $this->shipping_threshold = isset($this->settings['cart_threshold']) ? $this->settings['cart_threshold'] : 0;
+        $this->shipping_threshold = isset($this->settings['cart_threshold']) && (float)$this->settings['cart_threshold'] > 0 ? $this->settings['cart_threshold'] : 0;
 
         // ShipTime API credentials
         $this->shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
@@ -104,7 +104,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                     'step' => '1',
                     'min' => '0'
                 ),
-                'default' => '0'
+                'default' => '1'
             ),            
             'cart_threshold' => array(
                 'title' => 'Free Shipping Promotion',
@@ -494,10 +494,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                                             $accessorial_charge += $surcharge->Price->Amount/100.00;
                                         }
                                     }
-                                    $tax_charge = 0;
-                                    foreach ($shipRate->Taxes as $tax) {
-                                        $tax_charge += $tax->Price->Amount/100.00;
-                                    }
+                                    $tax_charge += ($shipRate->TotalCharge->Amount-$shipRate->TotalBeforeTaxes->Amount)/100.00;
                                     $c = (($base_charge + $fuel_charge + $tax_charge) * $markup_percentage) + $accessorial_charge;
                                 }
                             }
@@ -527,7 +524,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                     }
                 }
             } else {
-            	// Order shipping destination not set.
+                // Order shipping destination not set.
                 return;
             }
         } else {

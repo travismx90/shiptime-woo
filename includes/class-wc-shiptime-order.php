@@ -31,7 +31,6 @@ class WC_Order_ShipTime {
 		'DHL INTL' => '10'
 	);
 
-	private $apiUrl = 'http://sandbox.shiptime.com/api/';
 	private $_ratingClient = null;
 	private $_shippingClient = null;
 
@@ -170,8 +169,8 @@ class WC_Order_ShipTime {
 		if (is_object($shiptime_auth)) {
 			$encUser = $shiptime_auth->username;
 			$encPass = $shiptime_auth->password;
-			$this->_ratingClient = new emergeit\RatingClient($encUser, $encPass, $this->apiUrl);
-			$this->_shippingClient = new emergeit\ShippingClient($encUser, $encPass, $this->apiUrl);
+			$this->_ratingClient = new emergeit\RatingClient($encUser, $encPass);
+			$this->_shippingClient = new emergeit\ShippingClient($encUser, $encPass);
 		}
 	}
 
@@ -229,7 +228,9 @@ class WC_Order_ShipTime {
 			$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_order_currency()));
 			$current_rate = (float)preg_replace('/&.*?;/', '', strip_tags($current_rate));
 
-			$quoted_rate = $this->shipping_meta['Quote']->TotalCharge->Amount/100.00;
+			$quoted_rate = $this->shipping_meta['Quote']->TotalBeforeTaxes->Amount/100.00;
+			$total_charge = $this->shipping_meta['Quote']->TotalCharge->Amount/100.00;
+			$taxes = (float) $total_charge - $quoted_rate;
 
 			$wpdb->insert(
 				$wpdb->prefix.'shiptime_order',
@@ -243,10 +244,11 @@ class WC_Order_ShipTime {
 					'invoice_url' => serialize(array()),
 					'emergeit_id' => 1234,
 					'quoted_rate' => number_format($quoted_rate, 2),
-					'markup_rate' => number_format($current_rate, 2)
+					'markup_rate' => number_format($current_rate, 2),
+					'taxes' => number_format($taxes, 2)
 				),
 				array( 
-					'%d','%s','%s','%s','%s','%s','%s','%d','%f','%f'
+					'%d','%s','%s','%s','%s','%s','%s','%d','%f','%f','%f'
 				)
 			);
 		}
@@ -256,6 +258,8 @@ class WC_Order_ShipTime {
 		add_meta_box( 'shipment_metabox1', 'Shipment Details', array( $this, 'shiptime_metabox_content1' ), 'shop_order', 'side', 'default' );
 
 		add_meta_box( 'shipment_metabox2', 'Labels & Tracking', array( $this, 'shiptime_metabox_content2' ), 'shop_order', 'side', 'default' );
+
+		add_meta_box( 'shipment_metabox3', 'Rate Details', array( $this, 'shiptime_metabox_content3' ), 'shop_order', 'side', 'default' );
 	}
 	
 	function shiptime_metabox_content1() {
@@ -278,7 +282,7 @@ class WC_Order_ShipTime {
 			}
 			echo '<ul><li class="wide"><select class="select" name="shiptime_shipping_method" id="shiptime_shipping_method">';
 			foreach($this->shipping_services as $service_name => $service_code){
-				echo '<option value="'.$service_name.'" ' . selected($shipping_method, $service_name) . ' >'.$service_name.'</option>';
+				echo '<option value="'.$service_name.'" ' . selected(strtolower($shipping_method), strtolower($service_name)) . ' >'.$service_name.'</option>';
 			}
 			echo '</select></li>';
 			if($order->shipping_country != $shiptime_auth->country) {
@@ -535,6 +539,79 @@ class WC_Order_ShipTime {
 			<?php
 			}
 		}
+	}
+
+	function shiptime_metabox_content3() {
+		$quote = $this->shipping_meta['Quote'];
+
+		$rate_info = $this->shiptime_rate_breakdown($quote);
+
+		$k = 'details';
+		if (array_key_exists($k, $rate_info)) {
+			echo $rate_info[$k];
+		}
+	}
+
+	function shiptime_rate_breakdown($quote) {
+		$r = array();
+
+		if (isset($quote)) {
+			$shiptime_settings = get_option('woocommerce_shiptime_settings');
+			$services = $shiptime_settings['services'];
+
+			$markup_fixed = $services[$quote->ServiceId]['markup_fixed'];
+	        $markup_fixed = is_numeric($markup_fixed) && !empty($markup_fixed) ? $markup_fixed : 0;
+	        $markup_percentage = $services[$quote->ServiceId]['markup_percentage'];
+	        $markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage : 0;
+
+			$pre = get_woocommerce_currency_symbol();
+			$base = number_format($quote->BaseCharge->Amount/100.00,2);
+			$fuel = $accessorial = 0.00;
+			foreach ($quote->Surcharges as $surcharge) {
+	            if ($surcharge->Code == 'FUEL') {
+	                $fuel += $surcharge->Price->Amount/100.00;
+	            } else {
+	                $accessorial += $surcharge->Price->Amount/100.00;
+	            }
+	        }
+	        $markup_fixed = number_format($markup_fixed,2);
+	        $markup_percentage = number_format($markup_percentage,2);
+	        $fuel = number_format($fuel,2);
+	        $accessorial = number_format($accessorial,2);
+	        $total_before_tax = number_format($quote->TotalBeforeTaxes->Amount/100.00,2);
+	        $total_after_tax = number_format($quote->TotalCharge->Amount/100.00,2);
+	        $taxes = $total_after_tax-$total_before_tax;
+	        foreach ($quote->Taxes as $tax) {
+	        	$tax_type = $tax->Name;
+	        	break;
+	        }
+
+			$r['details'] = "Base Charge: ".$pre.$base."<br>";
+			$r['details'] .= "Fuel Surcharge: ".$pre.$fuel."<br>";
+			$r['details'] .= "Other Surcharges: ".$pre.$accessorial."<br>";
+			if ($markup_fixed>0) {
+				$r['details'] .= "Fixed Markup: ".$pre.$markup_fixed."<br>";
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(($total_before_tax+$markup_fixed),2)."<br>";
+				$r['details'] .= $tax_type.": ".$pre.$taxes."<br>";
+				$total = number_format(($total_after_tax+$markup_fixed),2);
+				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
+			} elseif ($markup_percentage>0) {
+				$r['details'] .= "Percentage Markup: ".$markup_percentage."%<br>";
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00,2)."<br>";
+				$r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$taxes*(1+$markup_percentage/100.00))/100.00,2)."<br>";
+				$total = number_format(ceil(100*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00,2);
+				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
+			} else {
+				$r['details'] .= "Total (w/o taxes): ".$pre.$total_before_tax."<br>";
+				$r['details'] .= $tax_type.": ".$pre.$taxes."<br>";
+				$total = $total_after_tax;
+				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
+			}
+
+			$r['total'] = $total;
+		}
+
+		return $r;
 	}
 
 	function shiptime_track_shipment() {
@@ -1131,11 +1208,14 @@ class WC_Order_ShipTime {
 
 	       	if (!empty($shipRates->AvailableRates)) {
 	       		foreach ($shipRates->AvailableRates as $shipRate) {
-	       			$l = strpos($shipRate->ServiceName, $shipRate->CarrierName) !== false ? $shipRate->ServiceName : $shipRate->CarrierName . " " . (!$is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false ? "International " : "") . $shipRate->ServiceName;
-	       			if ($l == sanitize_text_field($_GET['shiptime_shipping_method'])) {
+	       			$l = strpos($shipRate->ServiceName, $shipRate->CarrierName) !== false ? $shipRate->ServiceName : $shipRate->CarrierName . " " . (!$is_domestic && stripos($shipRate->ServiceName, 'Ground') !== false ? "International " : "") . $shipRate->ServiceName;
+	       			if (strtolower($l) == strtolower(sanitize_text_field($_GET['shiptime_shipping_method']))) {
 	       				$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_order_currency()));
-	       				$new_rate = wc_price($shipRate->TotalCharge->Amount/100.00, array('currency' => $order->get_order_currency()));
-	                    $msg = "<strong>Shipping Service:</strong> " . $l ."<br><strong>Shipping Rate:</strong> " . $new_rate;
+						$rate_info = $this->shiptime_rate_breakdown($shipRate);
+						if (array_key_exists('total', $rate_info) && array_key_exists('details', $rate_info)) {
+							$msg = '<strong>'.$l.'</strong><br>'.$rate_info['details'];
+							$new_rate = $rate_info['total'];
+						}
 	       				break;
 	       			}
 	       		}

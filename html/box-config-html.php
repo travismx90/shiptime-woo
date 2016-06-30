@@ -25,7 +25,7 @@
 					<th>Inner Length (in)</th>
 					<th>Inner Width (in)</th>
 					<th>Inner Height (in)</th>
-					<th>Packing Weight (lbs) &nbsp; <img class="help_tip" style="float:none;" data-tip="<?php _e( 'Packing Weight = (Weight of Empty Box) + (Weight of Packing Materials)', 'wc_auctioninc' ); ?>" src="<?php echo WC()->plugin_url();?>/assets/images/help.png" height="16" width="16" />
+					<th>Packing Weight (lbs) &nbsp; <img class="help_tip" style="float:none;" data-tip="<?php _e( 'Packing Weight = (Weight of Empty Box) + (Weight of Packing Materials)', 'wc_shiptime' ); ?>" src="<?php echo WC()->plugin_url();?>/assets/images/help.png" height="16" width="16" />
 					</th>
 				</tr>
 			</thead>

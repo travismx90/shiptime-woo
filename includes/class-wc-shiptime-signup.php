@@ -242,11 +242,15 @@ class WC_ShipTime_Signup {
 							</tr>							
 							<?php if (!$_GET['new_signup']) { ?>
 							<tr>
-								<td class="page-name"><?php echo _x( 'Encrypted Username', 'Page title', 'woocommerce' ); ?></td>
+								<td class="page-name">
+									<?php echo _x( 'Encrypted Username', 'Page title', 'woocommerce' ); ?>
+								</td>
 								<td><input type="text" id="shiptime_user" name="shiptime_user" value="<?php echo esc_attr( $shiptime_user ) ; ?>" /></td>
 							</tr>
 							<tr>
-								<td class="page-name"><?php echo _x( 'Encrypted Password', 'Page title', 'woocommerce' ); ?></td>
+								<td class="page-name">
+									<?php echo _x( 'Encrypted Password', 'Page title', 'woocommerce' ); ?>
+								</td>
 								<td><input type="text" id="shiptime_passwd" name="shiptime_passwd" value="<?php echo esc_attr( $shiptime_passwd ) ; ?>" /></td>
 							</tr>
 							<?php } else { ?>
@@ -510,11 +514,15 @@ class WC_ShipTime_Signup {
 								<td><input type="text" id="shiptime_email" name="shiptime_email" value="<?php echo esc_attr( $shiptime_auth->email ) ; ?>" /></td>
 							</tr>
 							<tr>
-								<td class="page-name"><?php echo _x( 'Encrypted Username', 'Page title', 'woocommerce' ); ?></td>
+								<td class="page-name">
+									<?php echo _x( 'Encrypted Username', 'Page title', 'woocommerce' ); ?>
+								</td>
 								<td><input type="text" id="shiptime_user" name="shiptime_user" value="<?php echo esc_attr( $shiptime_auth->username ) ; ?>" /></td>
 							</tr>
 							<tr>
-								<td class="page-name"><?php echo _x( 'Encrypted Password', 'Page title', 'woocommerce' ); ?></td>
+								<td class="page-name">
+									<?php echo _x( 'Encrypted Password', 'Page title', 'woocommerce' ); ?>
+								</td>
 								<td><input type="text" id="shiptime_passwd" name="shiptime_passwd" value="<?php echo esc_attr( $shiptime_auth->password ) ; ?>" /></td>
 							</tr>
 							<tr>
