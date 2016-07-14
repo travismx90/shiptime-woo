@@ -157,6 +157,13 @@ class LineItem
 	}
 }
 
+class Location
+{
+	public $city = null;
+	public $postalCode = null;
+	public $state = null;
+}
+
 class Message
 {
 	public $Severity = null;

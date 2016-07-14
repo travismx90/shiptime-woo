@@ -744,7 +744,23 @@ class WC_Order_ShipTime {
 		// Pull customer info from Woo order
 		$user_info = get_user_meta(absint($order->customer_user));
 		$req->To->Attention = ucwords($ship_addr['first_name'] . ' ' . $ship_addr['last_name']);
-		$req->To->City = ucwords($ship_addr['city']);
+		// Verify/Correct City based on CountryCode and PostalCode
+		$ship_city = ucwords($ship_addr['city']);
+		$loc = new emergeit\GetLocationRequest();
+		$loc->CountryCode = $ship_addr['country'];
+		$loc->PostalCode = $ship_addr['postcode'];
+		try {
+			$api_resp = $this->_ratingClient->getLocation($loc);
+			if (is_object($api_resp)) {
+				$api_city = $api_resp->Location->city;
+				if ($api_city != $ship_city) {
+					$ship_city = $api_city;
+				}
+			}
+		} catch (Exception $e) {
+			// Returns SoapFault Exception on Failure
+		}
+		$req->To->City = $ship_city;
 		$req->To->Phone = $bill_addr['phone'];
 		$req->To->CompanyName = !empty($ship_addr['company']) ? $ship_addr['company'] : '-';
 		$req->To->CountryCode = $ship_addr['country'];
@@ -798,7 +814,7 @@ class WC_Order_ShipTime {
 			$ic->PostalCode = $bill_addr['postcode'];
 			$ic->Province = $bill_addr['state'];
 			$ic->StreetAddress = ucwords($bill_addr['address_1']);
-			$ic->CustomsBroker = '';
+			$ic->CustomsBroker = '-';
 			$ic->ShipperTaxId = '-';
 			$req->CustomsInvoice->InvoiceContact = $ic;
 

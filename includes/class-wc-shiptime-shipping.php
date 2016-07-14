@@ -293,25 +293,25 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                 
                 // Create the XML request
                 $req = new emergeit\GetRatesRequest();
-                $req->From->Attention = '-';
-                $req->From->Phone = '-';
-                $req->From->CompanyName = '-';
-                $req->From->StreetAddress = '-';
+                $req->From->Attention = ucwords($this->shiptime_auth->first_name) . ' ' . ucwords($this->shiptime_auth->last_name);
+                $req->From->Phone = $this->shiptime_auth->phone;
+                $req->From->CompanyName = $this->shiptime_auth->company;
+                $req->From->StreetAddress = ucwords($this->shiptime_auth->address);
                 $req->From->CountryCode = $this->shiptime_auth->country;
                 $req->From->PostalCode = $this->shiptime_auth->zip;
                 $req->From->Province = $this->shiptime_auth->state;
-                $req->From->City = $this->shiptime_auth->city;
+                $req->From->City = ucwords($this->shiptime_auth->city);
                 $req->From->Notify = false;
                 $req->From->Residential = false;
 
-                $req->To->Attention = '-';
-                $req->To->Phone = '-';
-                $req->To->CompanyName = '-';
-                $req->To->StreetAddress = '-';
+                $req->To->Attention = 'John Smith';
+                $req->To->Phone = '5555555555';
+                $req->To->CompanyName = 'Test Company';
+                $req->To->StreetAddress = '1 Main St';
                 $req->To->CountryCode = $dest_country;
                 $req->To->PostalCode = $dest_postcode;
                 $req->To->Province = $dest_state;
-                $req->To->City = '-';
+                $req->To->City = ''; // lookup handled by API
                 $req->To->Notify = false;
                 $req->To->Residential = false;
                 
@@ -367,12 +367,12 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                     $ic = new emergeit\InvoiceContact();
                     $ic->City = '-';
                     $ic->CompanyName = '-';
-                    $ic->CountryCode = '-';
+                    $ic->CountryCode = $dest_country;
                     $ic->Email = '-';
                     $ic->Phone = '-';
-                    $ic->PostalCode = '-';
-                    $ic->Province = '-';
-                    $ic->StreetAddress = '-';
+                    $ic->PostalCode = $dest_postcode;
+                    $ic->Province = $dest_state;
+                    $ic->StreetAddress = '1 Main St';
                     $ic->CustomsBroker = '-';
                     $ic->ShipperTaxId = '-';
                     $req->CustomsInvoice->InvoiceContact = $ic;

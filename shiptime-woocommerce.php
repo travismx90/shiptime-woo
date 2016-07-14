@@ -95,9 +95,6 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		    ) $charset_collate;";
 		    dbDelta( $sql );
 
-		    $sql = "ALTER TABLE $table_name ADD COLUMN taxes decimal(8,2) NOT NULL AFTER recalc_rate";
-		    $wpdb->query( $sql );
-
 			// Table: shiptime_quote
 		    $table_name = $wpdb->prefix . 'shiptime_quote';
 		    $sql = "CREATE TABLE IF NOT EXISTS $table_name (

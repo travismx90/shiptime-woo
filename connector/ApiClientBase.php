@@ -48,10 +48,18 @@ abstract class ApiClientBase
 			'EncryptedPassword' => $this->_encPassword
 		);
 
-		$soapReq = array(array('Key' => $key, 'Request' => get_object_vars($req)));
+		// All API requests are wrapped within a <Request> and returned within
+		// a <Response> except for getLocation, which uses neither
+		if ($method !== 'getLocation') {
+			$soapReq = array(array('Key' => $key, 'Request' => get_object_vars($req)));
 		
-		$soapResp = $this->_soapClient->__soapCall($method, $soapReq)->Response; 
-		//$this->storeSessionId();
+			$soapResp = $this->_soapClient->__soapCall($method, $soapReq)->Response; 
+			//$this->storeSessionId();
+		} else {
+			$soapReq = array(array_merge(array('Key' => $key), get_object_vars($req)));
+			
+			$soapResp = $this->_soapClient->__soapCall($method, $soapReq);
+		}
 		
 		return $soapResp;
 	}

@@ -54,9 +54,12 @@ class ShipmentBuilder {
     public function canPackage($length, $width, $height, $weight, $package, $boxs, $max_l, $max_w, $max_h) {
     	// max_l, max_w, max_h
     	// Service maximum package weight = 70 lbs
-    	$p = clone($package);
-    	$p->pack($length, $width, $height, $weight);
-    	if ($p->getLength() <= $max_l && $p->getWidth() <= $max_w && $p->getHeight() <= $max_h && ($package->getWeight() + $weight < 70)) {
+		$p = clone($package);
+		$p->pack($length, $width, $height, $weight);
+		$l = $p->getLength();
+		$w = $p->getWidth();
+		$h = $p->getHeight();
+    	if ($l <= $max_l && $w <= $max_w && $h <= $max_h && ($p->getWeight() + $weight < 70)) {
 			foreach ($boxs as $b) {
 				if ($b->pack($l, $w, $h)) {
 					return true;
