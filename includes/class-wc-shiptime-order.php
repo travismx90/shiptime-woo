@@ -304,10 +304,10 @@ class WC_Order_ShipTime {
 					echo "<br><strong>Package ".($i+1)." of {$c}</strong>&nbsp;-&nbsp;<a href='" . admin_url( "/post.php?post=".$post->ID."&action=edit&shiptime_pkg_deletion=" . base64_encode( $post->ID ) . "&shiptime_pkg=" . $i ) . "'>Remove</a><hr>";
 		?>
 				<li>
-					<span style='width:50px;display:inline-block'><strong>Weight:</strong></span><input type="text" name="parcel_weight_<?= $i+1; ?>" id="parcel_weight_<?= $i+1; ?>" value="<?= $this->arr_check($pkgs[$i], 'weight'); ?>" size="3" />&nbsp;<?=$this->weight_uom;?><br>     
-					<span style='width:50px;display:inline-block'><strong>Length:</strong></span><input type="text" name="parcel_length_<?= $i+1; ?>" id="parcel_length_<?= $i+1; ?>" value="<?= $this->arr_check($pkgs[$i], 'length'); ?>" size="3" />&nbsp;<?=$this->dim_uom;?><br>
-					<span style='width:50px;display:inline-block'><strong>Width:</strong></span><input type="text" name="parcel_width_<?= $i+1; ?>" id="parcel_width_<?= $i+1; ?>" value="<?= $this->arr_check($pkgs[$i], 'width'); ?>" size="3" />&nbsp;<?=$this->dim_uom;?><br>
-					<span style='width:50px;display:inline-block'><strong>Height:</strong></span><input type="text" name="parcel_height_<?= $i+1; ?>" id="parcel_height_<?= $i+1; ?>" value="<?= $this->arr_check($pkgs[$i], 'height'); ?>" size="3" />&nbsp;<?=$this->dim_uom;?><br>
+					<span style='width:50px;display:inline-block'><strong>Weight:</strong></span><input type="text" name="parcel_weight_<?php echo $i+1; ?>" id="parcel_weight_<?php echo $i+1; ?>" value="<?php echo $this->arr_check($pkgs[$i], 'weight'); ?>" size="3" />&nbsp;<?php echo $this->weight_uom;?><br>     
+					<span style='width:50px;display:inline-block'><strong>Length:</strong></span><input type="text" name="parcel_length_<?php echo $i+1; ?>" id="parcel_length_<?php echo $i+1; ?>" value="<?php echo $this->arr_check($pkgs[$i], 'length'); ?>" size="3" />&nbsp;<?php echo $this->dim_uom;?><br>
+					<span style='width:50px;display:inline-block'><strong>Width:</strong></span><input type="text" name="parcel_width_<?php echo $i+1; ?>" id="parcel_width_<?php echo $i+1; ?>" value="<?php echo $this->arr_check($pkgs[$i], 'width'); ?>" size="3" />&nbsp;<?php echo $this->dim_uom;?><br>
+					<span style='width:50px;display:inline-block'><strong>Height:</strong></span><input type="text" name="parcel_height_<?php echo $i+1; ?>" id="parcel_height_<?php echo $i+1; ?>" value="<?php echo $this->arr_check($pkgs[$i], 'height'); ?>" size="3" />&nbsp;<?php echo $this->dim_uom;?><br>
 					Selected Box: <?php echo '<strong>' . (!empty($boxs[$i]) ? $boxs[$i] : 'N/A') . '</strong>'; ?><br>
 					<a href="#TB_inline?width=600&height=480&inlineId=choose-box" class="thickbox" onClick="changeBox(<?php echo $i; ?>)">Change box</a>&nbsp; or &nbsp;<a href="#TB_inline?width=600&height=480&inlineId=add-box" class="thickbox">Add new box</a>
 					<?php add_thickbox(); ?>

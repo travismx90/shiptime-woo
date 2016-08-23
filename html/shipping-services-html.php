@@ -44,8 +44,9 @@
 					$shipping_services = sortServices($shipping_services);
 
 					$this->available_services = array();
+					//echo '<pre>'.print_r($shipping_services,true).'</pre>';die();
 					foreach ($shipping_services as $service_id => $data) {
-						$this->available_services[$data['ServiceName']] = $service_id;
+						$this->available_services[$service_id] = $data['ServiceName'];
 					}
 
 					$this->intl_services = array(
@@ -65,7 +66,7 @@
 
 					$shiptime_settings = get_option('woocommerce_shiptime_settings');
 
-					foreach ( $this->available_services as $serviceName => $serviceId ) {
+					foreach ( $this->available_services as $serviceId => $serviceName) {
 						$intl = false;
 						$name = strpos($serviceName, $shipping_services[$serviceId]['CarrierName']) !== false ? $serviceName : $shipping_services[$serviceId]['CarrierName'] . " " . $serviceName;
 						if (in_array($name, $this->intl_services)) { $intl = true; } ?>

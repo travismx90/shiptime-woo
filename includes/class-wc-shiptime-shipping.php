@@ -429,6 +429,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                 $cached_response = get_transient($transient);
                 
                 $shipRates = array();
+                $sortedRates = array();
                 $cached = false;
 
                 if ($cached_response !== false) {
@@ -503,8 +504,14 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                                 'label' => $l,
                                 'cost'  => $c
                             );
-                            $this->add_rate($rate);
+                            $sortedRates[] = $rate;
                         }
+                    }
+
+                    uasort($sortedRates, array($this, 'sortRates'));
+
+                    foreach ($sortedRates as $rate) {
+                        $this->add_rate($rate);
                     }
 
                 } else {
@@ -532,6 +539,13 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
             return;
         }
 
+    }
+
+    public function sortRates($a,$b) {
+        if ($a['cost'] == $b['cost']) {
+            return 0;
+        }
+        return ($a['cost'] < $b['cost']) ? -1 : 1;
     }
 
 }

@@ -61,7 +61,11 @@ class WC_ShipTime_Signup {
 	public function shiptime_signup() {
 		global $wpdb;
 
-		$shiptime_activated = !empty($wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login GROUP BY id HAVING MIN(id)"));
+		$shiptime_activated = false;
+		$row = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login GROUP BY id HAVING MIN(id)");
+		if ( !empty($row) ) {
+			$shiptime_activated = true;
+		}
 
 		if ( empty( $_GET['page'] ) || 'shiptime-signup' !== $_GET['page'] ) {
 			return;
