@@ -16,10 +16,10 @@ class Package {
 	public $Width;
 	public $Height;
 	public $Weight;
-    public $DimUnit;
-    public $WeightUnit;
-    public $ItemCount;
-    public $ItemVolume;
+  public $DimUnit;
+  public $WeightUnit;
+  public $ItemCount;
+  public $ItemVolume;
 
 	public function __construct() {
 		$this->Box = null;
@@ -49,93 +49,93 @@ class Package {
 		return $this->Length;
 	}
 
-    public function setLength($val) {
-        $this->Length = $val;
-    }
+  public function setLength($val) {
+    $this->Length = $val;
+  }
 
 	public function getWidth() {
 		return $this->Width;
 	}
 
-    public function setWidth($val) {
-        $this->Width = $val;
-    }
+  public function setWidth($val) {
+    $this->Width = $val;
+  }
 
 	public function getHeight() {
 		return $this->Height;
 	}
 
-    public function setHeight($val) {
-        $this->Height = $val;
-    }
+  public function setHeight($val) {
+    $this->Height = $val;
+  }
 
 	public function getWeight() {
 		return $this->Weight;
 	}
 
-    public function setWeight($val) {
-        $this->Weight = $val;
-    }
+  public function setWeight($val) {
+    $this->Weight = $val;
+  }
 
-    public function setDimUnit($uom) {
-        // Set unit of measure for dimensions
-        // Currently API only supports 'IN'
-        $this->DimUnit = $uom;
-    }
+  public function setDimUnit($uom) {
+    // Set unit of measure for dimensions
+    // Currently API only supports 'IN'
+    $this->DimUnit = $uom;
+  }
 
-    public function getDimUnit() {
-        return $this->DimUnit;
-    }
+  public function getDimUnit() {
+    return $this->DimUnit;
+  }
 
-    public function setWeightUnit($uom) {
-        // Set unit of measure for weights
-        // Currently API only supports 'LB'
-        $this->WeightUnit = $uom;
-    }
+  public function setWeightUnit($uom) {
+    // Set unit of measure for weights
+    // Currently API only supports 'LB'
+    $this->WeightUnit = $uom;
+  }
 
-    public function getWeightUnit() {
-        return $this->WeightUnit;
-    }
+  public function getWeightUnit() {
+    return $this->WeightUnit;
+  }
 
-    public function getPackageVolume() {
-    	return $this->getLength() * $this->getWidth() * $this->getHeight();
-    }
+  public function getPackageVolume() {
+  	return $this->getLength() * $this->getWidth() * $this->getHeight();
+  }
 
-    public function getItemVolume() {
-    	return $this->ItemVolume;
-    }
+  public function getItemVolume() {
+   	return $this->ItemVolume;
+  }
 
 	public function pack($length, $width, $height, $weight) {
 		$this->ItemCount += 1;
 		$this->ItemVolume += (float) $length * $width * $height;
 
 		$curr_dims = array($this->Length, $this->Width, $this->Height);
-        sort($curr_dims);
+    sort($curr_dims);
 
-        $new_dims = array($length, $width, $height);
-        sort($new_dims);
+    $new_dims = array($length, $width, $height);
+    sort($new_dims);
 
-        if ($this->ItemCount == 1) {
-        	// Add the largest item first
-        	$this->Length = $new_dims[2];
-        	$this->Width = $new_dims[1];
-        	$this->Height = $new_dims[0];
-        } elseif ($this->ItemCount == 2) {
-        	// Check the smallest package dimension requirement
-        	$this->Length = $curr_dims[2];
-        	$this->Width = ceil(sqrt($this->getPackageVolume()/$this->Length));
-        	$this->Height = $curr_dims[0] + $new_dims[0];
-        	if ($this->getPackageVolume() < $this->getItemVolume()) {
-        		$this->Width = ceil($this->getItemVolume()/($this->Length*$this->Height));
-        	}
-        } else {
-            // General case for 3+ items
-        	$this->Length = $curr_dims[2];
-        	if ($this->getPackageVolume() < $this->getItemVolume()) {
-        		$this->Width = ceil(sqrt($this->getItemVolume()/$this->Length));
-        		$this->Height = ceil($this->getItemVolume()/($this->Length*$this->Width));
-        	}
-        }
+    if ($this->ItemCount == 1) {
+    	// Add the largest item first
+      $this->Length = $new_dims[2];
+      $this->Width = $new_dims[1];
+      $this->Height = $new_dims[0];
+    } elseif ($this->ItemCount == 2) {
+     	// Check the smallest package dimension requirement
+     	$this->Length = $curr_dims[2];
+     	$this->Width = ceil(sqrt($this->getPackageVolume()/$this->Length));
+     	$this->Height = $curr_dims[0] + $new_dims[0];
+     	if ($this->getPackageVolume() < $this->getItemVolume()) {
+     	  $this->Width = ceil($this->getItemVolume()/($this->Length*$this->Height));
+      }
+    } else {
+      // General case for 3+ items
+     	$this->Length = $curr_dims[2];
+     	if ($this->getPackageVolume() < $this->getItemVolume()) {
+     		$this->Width = ceil(sqrt($this->getItemVolume()/$this->Length));
+     		$this->Height = ceil($this->getItemVolume()/($this->Length*$this->Width));
+     	}
+    }
 
 		$this->Weight += (float) $weight;
 	}

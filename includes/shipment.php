@@ -34,32 +34,32 @@ class ShipmentBuilder {
 		return $this->Items;
 	}
 
-    public static function sortItems($sort) {
-        if (empty($sort)) { return false; }
-        uasort($sort, array(__CLASS__, 'itemSorting'));
-        return $sort;
-    }
-    
-    public static function itemSorting($a, $b) {
-    	$a_dims = array($a["length"], $a["width"], $a["height"]);
-        sort($a_dims);
-        
-        $b_dims = array($b["length"], $b["width"], $b["height"]);
-        sort($b_dims);
+  public static function sortItems($sort) {
+    if (empty($sort)) { return false; }
+    uasort($sort, array(__CLASS__, 'itemSorting'));
+    return $sort;
+  }
 
-        if ($a_dims[2] == $b_dims[2]) return 0;
-        return ($a_dims[2] > $b_dims[2]) ? 1 : -1;
-    }
+  public static function itemSorting($a, $b) {
+    $a_dims = array($a["length"], $a["width"], $a["height"]);
+     sort($a_dims);
 
-    public function canPackage($length, $width, $height, $weight, $package, $boxs, $max_l, $max_w, $max_h) {
-    	// max_l, max_w, max_h
-    	// Service maximum package weight = 70 lbs
+     $b_dims = array($b["length"], $b["width"], $b["height"]);
+     sort($b_dims);
+
+     if ($a_dims[2] == $b_dims[2]) return 0;
+     return ($a_dims[2] > $b_dims[2]) ? 1 : -1;
+  }
+
+  public function canPackage($length, $width, $height, $weight, $package, $boxs, $max_l, $max_w, $max_h) {
+    // max_l, max_w, max_h
+    // Service maximum package weight = 70 lbs
 		$p = clone($package);
 		$p->pack($length, $width, $height, $weight);
 		$l = $p->getLength();
 		$w = $p->getWidth();
 		$h = $p->getHeight();
-    	if ($l <= $max_l && $w <= $max_w && $h <= $max_h && ($p->getWeight() + $weight < 70)) {
+    if ($l <= $max_l && $w <= $max_w && $h <= $max_h && ($p->getWeight() + $weight < 70)) {
 			foreach ($boxs as $b) {
 				if ($b->pack($l, $w, $h)) {
 					return true;
@@ -67,7 +67,7 @@ class ShipmentBuilder {
 			}
 		}
 		return false;
-    }
+  }
 
 	public function package($boxes) {
 		// L + 2(W+H) <= 108
@@ -76,7 +76,7 @@ class ShipmentBuilder {
 		// used if merchant does not configure any boxes.
 		$max_l = 24;
 		$max_w = 20;
-		$max_h = 18;			
+		$max_h = 18;
 		$boxs = array();
 		if (!empty($boxes)) {
 			foreach ($boxes as $b) {

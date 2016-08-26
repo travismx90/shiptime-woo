@@ -49,19 +49,20 @@
 						$this->available_services[$service_id] = $data['ServiceName'];
 					}
 
+          // TODO: Remove hard-coded values
 					$this->intl_services = array(
 						'DHL INTL EXPRESS 10:30',
-				        'DHL INTL EXPRESS 12:00',
-				        'DHL INTL EXPRESS WORLDWIDE',
+				    'DHL INTL EXPRESS 12:00',
+				    'DHL INTL EXPRESS WORLDWIDE',
 						'FedEx International First',
-				        'FedEx International Priority',
-				        'FedEx International Economy',
-				        'Purolator Express U.S.',
-				        'Purolator Express Pack U.S.',
-				        'Purolator Express Pack International',
-				        'Purolator Ground U.S.',
-				        'USPS Priority Mail International',
-				        'USPS Express Mail International'
+            'FedEx International Priority',
+            'FedEx International Economy',
+            'Purolator Express U.S.',
+            'Purolator Express Pack U.S.',
+            'Purolator Express Pack International',
+            'Purolator Ground U.S.',
+            'USPS Priority Mail International',
+            'USPS Express Mail International'
 					);
 
 					$shiptime_settings = get_option('woocommerce_shiptime_settings');

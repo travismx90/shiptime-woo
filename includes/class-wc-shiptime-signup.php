@@ -40,7 +40,7 @@ class WC_ShipTime_Signup {
 		set_transient( 'shiptime_signup_required', 1, 0 ); // 0 = never expires
 
 		$row = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
-		
+
 		$shiptime_activated = !empty($row);
 
 		// Check if merchant already has a ShipTime account
@@ -48,7 +48,7 @@ class WC_ShipTime_Signup {
 
 		if ( (!empty($_GET['page']) && in_array($_GET['page'], array('shiptime-signup'))) || is_network_admin() ) {
 			return;
-		}		
+		}
 
 		// If the user needs to signup, send to signup form
 		wp_safe_redirect( admin_url( 'index.php?page=shiptime-signup' ) );
@@ -103,7 +103,7 @@ class WC_ShipTime_Signup {
 			'shiptime_lang' => '',
 			'shiptime_phone' => '',
 			'shiptime_postal_code' => '',
-			'shiptime_state' => ''								
+			'shiptime_state' => ''
 		);
 
 		foreach (array_keys($defaults) as $field) {
@@ -116,29 +116,29 @@ class WC_ShipTime_Signup {
 						break;
 					case 'shiptime_city':
 						$defaults[$field] = !empty($user_info['billing_city'][0]) ? ucwords($user_info['billing_city'][0]) : ucwords($user_info['shipping_city'][0]);
-						break;	
+						break;
 					case 'shiptime_company':
 						$defaults[$field] = !empty($user_info['billing_company'][0]) ? $user_info['billing_company'][0] : $user_info['shipping_company'][0];
 						break;
 					case 'shiptime_country':
 						$defaults[$field] = !empty($user_info['billing_country'][0]) ? $user_info['billing_country'][0] : $user_info['shipping_country'][0];
-						break;	
+						break;
 					case 'shiptime_email':
 						$defaults[$field] = !empty($user_info['billing_email'][0]) ? $user_info['billing_email'][0] : $user_info['shipping_email'][0];
 						break;
 					case 'shiptime_passwd':
-						break;	
+						break;
 					case 'shiptime_first_name':
 						$defaults[$field] = !empty($user_info['billing_first_name'][0]) ? ucwords($user_info['billing_first_name'][0]) : ucwords($user_info['shipping_first_name'][0]);
 						break;
 					case 'shiptime_last_name':
 						$defaults[$field] = !empty($user_info['billing_last_name'][0]) ? ucwords($user_info['billing_last_name'][0]) : ucwords($user_info['shipping_last_name'][0]);
-						break;	
+						break;
 					case 'shiptime_lang':
 						break;
 					case 'shiptime_phone':
 						$defaults[$field] = !empty($user_info['billing_phone'][0]) ? $user_info['billing_phone'][0] : $user_info['shipping_phone'][0];
-						break;																			
+						break;
 					case 'shiptime_postal_code':
 						$defaults[$field] = !empty($user_info['billing_postcode'][0]) ? $user_info['billing_postcode'][0] : $user_info['shipping_postcode'][0];
 						break;
@@ -200,8 +200,8 @@ class WC_ShipTime_Signup {
 		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
 			<img src="http://www.shiptime.com/img/logo-shiptime.png" alt="ShipTime" />
 			<h1>ShipTime Profile</h1>
-			<?php 
-				if (isset($_SESSION['error'])) { 
+			<?php
+				if (isset($_SESSION['error'])) {
 					$defaults = $_SESSION['defaults']; unset($_SESSION['defaults']);
 					$shiptime_address = $defaults['shiptime_address'];
 					$shiptime_city = $defaults['shiptime_city'];
@@ -219,7 +219,7 @@ class WC_ShipTime_Signup {
 				<div class="error">
 					<?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
 				</div>
-			<?php 
+			<?php
 				}
 			?>
 			<div class="wc-setup-content">
@@ -238,12 +238,12 @@ class WC_ShipTime_Signup {
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Last Name', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_last_name" name="shiptime_last_name" value="<?php echo esc_attr( $shiptime_last_name ) ; ?>" /></td>							
+								<td><input type="text" id="shiptime_last_name" name="shiptime_last_name" value="<?php echo esc_attr( $shiptime_last_name ) ; ?>" /></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Email', 'Page title', 'woocommerce' ); ?></td>
 								<td><input type="text" id="shiptime_email" name="shiptime_email" value="<?php echo esc_attr( $shiptime_email ) ; ?>" /></td>
-							</tr>							
+							</tr>
 							<?php if (!$_GET['new_signup']) { ?>
 							<tr>
 								<td class="page-name">
@@ -273,7 +273,7 @@ class WC_ShipTime_Signup {
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Country', 'Page title', 'woocommerce' ); ?></td>
-								<td>			
+								<td>
 									<select onchange="submit()" name="shiptime_country" style="height:28px !important">
 										<option value=""><?php _e( 'Select a country&hellip;', 'woocommerce' ); ?></option>
 									<?php
@@ -290,7 +290,7 @@ class WC_ShipTime_Signup {
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'State', 'Page title', 'woocommerce' ); ?></td>
-								<td>									
+								<td>
 									<select name="shiptime_state" style="height:28px !important">
 										<option value=""><?php _e( 'Select a state&hellip;', 'woocommerce' ); ?></option>
 									<?php
@@ -316,7 +316,7 @@ class WC_ShipTime_Signup {
 										<option value=""><?php _e( 'French (FR)', 'woocommerce' ); ?></option>
 									</select>
 								</td>
-							</tr>																					
+							</tr>
 						</tbody>
 					</table>
 					<p><input type="submit" class="button-primary button button-large" value="Sign Up" name="shiptime_signup" /></p>
@@ -362,9 +362,9 @@ class WC_ShipTime_Signup {
 			$shiptime_login_id = empty($shiptime_login) ? 0 : $shiptime_login->id;
 			if (empty($shiptime_login_id)) {
 				$wpdb->insert(
-					"{$wpdb->prefix}shiptime_login", 
+					"{$wpdb->prefix}shiptime_login",
 					array(
-						'username' => $shiptime_user, 
+						'username' => $shiptime_user,
 						'password' => $shiptime_passwd,
 						'first_name' => $shiptime_first_name,
 						'last_name' => $shiptime_last_name,
@@ -383,9 +383,9 @@ class WC_ShipTime_Signup {
 				set_transient( 'shiptime_signup_success', 1, 30 );
 			} else {
 				$wpdb->update(
-					"{$wpdb->prefix}shiptime_login", 
+					"{$wpdb->prefix}shiptime_login",
 					array(
-						'username' => $shiptime_user, 
+						'username' => $shiptime_user,
 						'password' => $shiptime_passwd,
 						'first_name' => $shiptime_first_name,
 						'last_name' => $shiptime_last_name,
@@ -407,7 +407,7 @@ class WC_ShipTime_Signup {
 		} else {
 			// New ShipTime Merchant: Submit Signup Request
 			require_once(dirname(__FILE__).'/../connector/SignupClient.php');
-			$signupClient = new emergeit\SignupClient(); 
+			$signupClient = new emergeit\SignupClient();
 
 			$req = new emergeit\SignupRequest();
 
@@ -430,9 +430,9 @@ class WC_ShipTime_Signup {
 			if (!empty($resp->key->EncryptedUsername)) {
 				// Success
 				$wpdb->insert(
-					"{$wpdb->prefix}shiptime_login", 
+					"{$wpdb->prefix}shiptime_login",
 					array(
-						'username' => $resp->key->EncryptedUsername, 
+						'username' => $resp->key->EncryptedUsername,
 						'password' => $resp->key->EncryptedPassword,
 						'first_name' => $shiptime_first_name,
 						'last_name' => $shiptime_last_name,
@@ -511,7 +511,7 @@ class WC_ShipTime_Signup {
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Last Name', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_last_name" name="shiptime_last_name" value="<?php echo esc_attr( $shiptime_auth->last_name ) ; ?>" /></td>							
+								<td><input type="text" id="shiptime_last_name" name="shiptime_last_name" value="<?php echo esc_attr( $shiptime_auth->last_name ) ; ?>" /></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Email', 'Page title', 'woocommerce' ); ?></td>
@@ -539,7 +539,7 @@ class WC_ShipTime_Signup {
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Country', 'Page title', 'woocommerce' ); ?></td>
-								<td>			
+								<td>
 									<select onchange="submit()" name="shiptime_country" style="height:28px !important">
 										<option value=""><?php _e( 'Select a country&hellip;', 'woocommerce' ); ?></option>
 									<?php
@@ -556,7 +556,7 @@ class WC_ShipTime_Signup {
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'State', 'Page title', 'woocommerce' ); ?></td>
-								<td>									
+								<td>
 									<select name="shiptime_state" style="height:28px !important">
 										<option value=""><?php _e( 'Select a state&hellip;', 'woocommerce' ); ?></option>
 									<?php
@@ -582,7 +582,7 @@ class WC_ShipTime_Signup {
 										<option value="FR"<?php echo selected( $shiptime_auth->lang, 'FR', false ); ?>><?php _e( 'French (FR)', 'woocommerce' ); ?></option>
 									</select>
 								</td>
-							</tr>																					
+							</tr>
 						</tbody>
 					</table>
 					<p><input type="submit" class="button-primary button button-large" value="Update Profile" name="shiptime_signup" /></p>

@@ -11,18 +11,19 @@ require_once(dirname(__FILE__).'/../connector/RatingClient.php');
 require_once(dirname(__FILE__).'/../connector/ShippingClient.php');
 
 class WC_Order_ShipTime {
-    
-    const FEDEX_TRACKING = "https://www.fedex.com/Tracking?action=track&tracknumbers=";
-    const CANPAR_TRACKING = "https://www.canpar.com/en/track/TrackingAction.do?locale=en&type=0&shipper_num=42091720&reference=";
-    const PURO_TRACKING = "https://eshiponline.purolator.com/SHIPONLINE/Public/Track/TrackingDetails.aspx?pin=";
-    const DHL_TRACKING = "http://www.dhl.com/content/g0/en/express/tracking.shtml?AWB=";
-    const DICOM_TRACKING = "https://www.dicom.com/en/dicomexpress/tracking/load-tracking/";
-    const LOOMIS_TRACKING = "http://www.loomisexpress.com/ca/wfTrackingStatus.aspx?PieceNumber=";
+
+  const FEDEX_TRACKING = "https://www.fedex.com/Tracking?action=track&tracknumbers=";
+  const CANPAR_TRACKING = "https://www.canpar.com/en/track/TrackingAction.do?locale=en&type=0&shipper_num=42091720&reference=";
+  const PURO_TRACKING = "https://eshiponline.purolator.com/SHIPONLINE/Public/Track/TrackingDetails.aspx?pin=";
+  const DHL_TRACKING = "http://www.dhl.com/content/g0/en/express/tracking.shtml?AWB=";
+  const DICOM_TRACKING = "https://www.dicom.com/en/dicomexpress/tracking/load-tracking/";
+  const LOOMIS_TRACKING = "http://www.loomisexpress.com/ca/wfTrackingStatus.aspx?PieceNumber=";
 
 	private $shiptime_domestic = array();
 	private $shiptime_intl = array();
 	private $all_services = null;
-	private $shiptime_carriers = array(
+	// TODO: Removed hard-coded values
+  private $shiptime_carriers = array(
 		'FedEx' => '7',
 		'Canpar' => '14',
 		'Loomis' => '105',
@@ -37,17 +38,17 @@ class WC_Order_ShipTime {
 	public function __construct() {
 		$this->wc_order_shiptime_init();
 
-		if ( is_admin() ) { 
+		if ( is_admin() ) {
 			add_action( 'add_meta_boxes', array( $this, 'add_shiptime_metabox' ), 15 );
 		}
-		
+
 		// Add shipment tracking information to customer email -- v2?
         //add_action( 'woocommerce_email_order_meta', array( $this, 'shiptime_order_email'), 20 );
 
 		if ( isset( $_GET['recalc'] ) && (int)$_GET['recalc'] == 1 ) {
 			add_action( 'init', array( $this, 'recalc' ), 15 );
 		}
-		
+
 		if ( isset( $_GET['shiptime_place_shipment'] ) ) {
 			add_action( 'init', array( $this, 'shiptime_place_shipment' ), 15 );
 		}
@@ -72,25 +73,25 @@ class WC_Order_ShipTime {
 		}
 	}
 
-    static function sort_boxes($sort) {
-        if (empty($sort)) { return false; }
-        uasort($sort, array(__CLASS__, 'box_sorting'));
-        return $sort;
+  static function sort_boxes($sort) {
+    if (empty($sort)) { return false; }
+    uasort($sort, array(__CLASS__, 'box_sorting'));
+    return $sort;
+  }
+
+  static function box_sorting($a, $b) {
+    $a_vol = $a['inner_length']*$a['inner_width']*$a['inner_height'];
+    $b_vol = $a['inner_length']*$a['inner_width']*$a['inner_height'];
+    $a_wgt = $a['weight'];
+    $b_wgt = $b['weight'];
+    if ( $a_vol == $b_vol ) {
+      if ( $a_wgt == $b_wgt ) {
+        return 0;
+      }
+      return ( $a_wgt < $b_wgt ) ? 1 : -1;
     }
-    
-    static function box_sorting($a, $b) {
-    	$a_vol = $a['inner_length']*$a['inner_width']*$a['inner_height'];
-    	$b_vol = $a['inner_length']*$a['inner_width']*$a['inner_height'];
-    	$a_wgt = $a['weight'];
-    	$b_wgt = $b['weight'];
-        if ( $a_vol == $b_vol ) {
-            if ( $a_wgt == $b_wgt ) {
-                return 0;
-            }
-            return ( $a_wgt < $b_wgt ) ? 1 : -1;
-        }
-        return ( $a_vol < $b_vol ) ? 1 : -1;
-    }
+    return ( $a_vol < $b_vol ) ? 1 : -1;
+  }
 
 	static function find_box_by_dims($length, $width, $height) {
 		$def = 'PLACEHOLDER-CONFIG';
@@ -109,7 +110,7 @@ class WC_Order_ShipTime {
 		);
 		$boxes[] = $tmp;
 		$boxes = array_reverse(self::sort_boxes($boxes));
-		
+
 		// If package matches a configured box
 		foreach ($boxes as $box) {
 			$dims = array($box['outer_length'], $box['outer_width'], $box['outer_height']);
@@ -119,7 +120,7 @@ class WC_Order_ShipTime {
 				return $box['label'];
 			}
 		}
-		
+
 		// If package lesser dims than any configured box
 		$first = array_shift($boxes);
 		if ($first['label'] == $def) {
@@ -177,7 +178,7 @@ class WC_Order_ShipTime {
 	function get_shipping_meta($shiptime_quote) {
 		$quotes = self::casttoclass('stdClass', unserialize($shiptime_quote->quote));
 		$service = $shiptime_quote->shipping_method;
-		
+
 		foreach ($quotes->AvailableRates as $quote) {
 			$l = strpos($quote->ServiceName, $quote->CarrierName) !== false ? $quote->ServiceName : $quote->CarrierName . " ". $quote->ServiceName;
 			if ($l == $service) {
@@ -199,11 +200,11 @@ class WC_Order_ShipTime {
 	function add_shiptime_metabox() {
 		global $post;
 		global $wpdb;
-		
+
 		if ( !$post ) return;
-		
+
 		$order = $this->get_wc_order($post->ID);
-		if ( !$order ) return; 
+		if ( !$order ) return;
 		$shiptime_quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE order_id=".$order->id." ORDER BY id DESC LIMIT 1");
 		if (is_object($shiptime_quote)) {
 			$this->shipping_meta = $this->get_shipping_meta($shiptime_quote);
@@ -224,7 +225,7 @@ class WC_Order_ShipTime {
 				);
 				$box_codes[] = self::find_box_by_dims($pkg->Length, $pkg->Width, $pkg->Height);
 			}
-			
+
 			$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_order_currency()));
 			$current_rate = (float)preg_replace('/&.*?;/', '', strip_tags($current_rate));
 
@@ -247,7 +248,7 @@ class WC_Order_ShipTime {
 					'markup_rate' => number_format($current_rate, 2),
 					'taxes' => number_format($taxes, 2)
 				),
-				array( 
+				array(
 					'%d','%s','%s','%s','%s','%s','%s','%d','%f','%f','%f'
 				)
 			);
@@ -261,7 +262,7 @@ class WC_Order_ShipTime {
 
 		add_meta_box( 'shipment_metabox3', 'Rate Details', array( $this, 'shiptime_metabox_content3' ), 'shop_order', 'side', 'default' );
 	}
-	
+
 	function shiptime_metabox_content1() {
 		global $wpdb;
 		global $post;
@@ -304,7 +305,7 @@ class WC_Order_ShipTime {
 					echo "<br><strong>Package ".($i+1)." of {$c}</strong>&nbsp;-&nbsp;<a href='" . admin_url( "/post.php?post=".$post->ID."&action=edit&shiptime_pkg_deletion=" . base64_encode( $post->ID ) . "&shiptime_pkg=" . $i ) . "'>Remove</a><hr>";
 		?>
 				<li>
-					<span style='width:50px;display:inline-block'><strong>Weight:</strong></span><input type="text" name="parcel_weight_<?php echo $i+1; ?>" id="parcel_weight_<?php echo $i+1; ?>" value="<?php echo $this->arr_check($pkgs[$i], 'weight'); ?>" size="3" />&nbsp;<?php echo $this->weight_uom;?><br>     
+					<span style='width:50px;display:inline-block'><strong>Weight:</strong></span><input type="text" name="parcel_weight_<?php echo $i+1; ?>" id="parcel_weight_<?php echo $i+1; ?>" value="<?php echo $this->arr_check($pkgs[$i], 'weight'); ?>" size="3" />&nbsp;<?php echo $this->weight_uom;?><br>
 					<span style='width:50px;display:inline-block'><strong>Length:</strong></span><input type="text" name="parcel_length_<?php echo $i+1; ?>" id="parcel_length_<?php echo $i+1; ?>" value="<?php echo $this->arr_check($pkgs[$i], 'length'); ?>" size="3" />&nbsp;<?php echo $this->dim_uom;?><br>
 					<span style='width:50px;display:inline-block'><strong>Width:</strong></span><input type="text" name="parcel_width_<?php echo $i+1; ?>" id="parcel_width_<?php echo $i+1; ?>" value="<?php echo $this->arr_check($pkgs[$i], 'width'); ?>" size="3" />&nbsp;<?php echo $this->dim_uom;?><br>
 					<span style='width:50px;display:inline-block'><strong>Height:</strong></span><input type="text" name="parcel_height_<?php echo $i+1; ?>" id="parcel_height_<?php echo $i+1; ?>" value="<?php echo $this->arr_check($pkgs[$i], 'height'); ?>" size="3" />&nbsp;<?php echo $this->dim_uom;?><br>
@@ -377,13 +378,13 @@ class WC_Order_ShipTime {
 									<td><input type="text" id="shiptime_box_weight" name="shiptime_box_weight">
 								</tr>
 							</table>
-							<br><br>																												
+							<br><br>
 							<a href="<?php echo admin_url( '/?shiptime_box_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary add_box">Submit</a>
 						</p>
 						<script type="text/javascript">
 							jQuery("a.add_box").on("click", function() {
-							   location.href = this.href 
-							    + '&shiptime_box_label=' + jQuery('#shiptime_box_label').val() 
+							   location.href = this.href
+							    + '&shiptime_box_label=' + jQuery('#shiptime_box_label').val()
 							    + '&shiptime_box_outer_length=' + jQuery('#shiptime_box_outer_length').val()
 								+ '&shiptime_box_outer_width=' + jQuery('#shiptime_box_outer_width').val()
 								+ '&shiptime_box_outer_height=' + jQuery('#shiptime_box_outer_height').val()
@@ -394,12 +395,12 @@ class WC_Order_ShipTime {
 							   return false;
 							});
 						</script>
-					</div>	
+					</div>
 				</li>
 		<?php
 				}
 			}
-		?>		                                                      
+		?>
 			</ul>
 			<span style="height:10px;display:block"></span><hr>
 			<a href="#TB_inline?width=600&height=480&inlineId=add-pkg" class="thickbox">+ Add Package to Shipment</a>
@@ -438,9 +439,9 @@ class WC_Order_ShipTime {
 					loc = this.href;
 					for (i=1; i<=parseInt(jQuery('#parcel_count').val()); i++) {
 						loc +=
-						'&parcel_weight_'+i+'=' + jQuery('#parcel_weight_'+i).val() + 
-				   		'&parcel_length_'+i+'=' + jQuery('#parcel_length_'+i).val() + 
-						'&parcel_width_'+i+'=' + jQuery('#parcel_width_'+i).val() + 
+						'&parcel_weight_'+i+'=' + jQuery('#parcel_weight_'+i).val() +
+				   		'&parcel_length_'+i+'=' + jQuery('#parcel_length_'+i).val() +
+						'&parcel_width_'+i+'=' + jQuery('#parcel_width_'+i).val() +
 						'&parcel_height_'+i+'=' + jQuery('#parcel_height_'+i).val();
 					}
 					location.href = loc + '&shiptime_shipping_method=' + jQuery('#shiptime_shipping_method').val() + '&shiptime_selection=' + jQuery('#shiptime_selection').val();
@@ -453,9 +454,9 @@ class WC_Order_ShipTime {
 					loc = this.href;
 					for (i=1; i<=parseInt(jQuery('#parcel_count').val()); i++) {
 						loc +=
-						'&parcel_weight_'+i+'=' + jQuery('#parcel_weight_'+i).val() + 
-				   		'&parcel_length_'+i+'=' + jQuery('#parcel_length_'+i).val() + 
-						'&parcel_width_'+i+'=' + jQuery('#parcel_width_'+i).val() + 
+						'&parcel_weight_'+i+'=' + jQuery('#parcel_weight_'+i).val() +
+				   		'&parcel_length_'+i+'=' + jQuery('#parcel_length_'+i).val() +
+						'&parcel_width_'+i+'=' + jQuery('#parcel_width_'+i).val() +
 						'&parcel_height_'+i+'=' + jQuery('#parcel_height_'+i).val();
 					}
 					location.href = loc + '&shiptime_shipping_method=' + jQuery('#shiptime_shipping_method').val() + '&shiptime_selection=' + jQuery('#shiptime_selection').val();
@@ -468,15 +469,15 @@ class WC_Order_ShipTime {
 				function changeBox(id) {
 					lastId = id;
 				}
-			</script>		
-		<?php 
+			</script>
+		<?php
 		}
 		else {
 			$pkgs = unserialize($this->shiptime_data->package_data);
 			if (!empty($pkgs)) {
 				for ($i=0,$c=count($pkgs); $i<$c; $i++) {
 					echo "<strong>Package ".($i+1)." of {$c}</strong><hr>";
-					
+
 					echo 'Weight: '.$pkgs[$i]['weight'].' '.$this->weight_uom.'<br>';
 					echo 'Dimensions: '.$pkgs[$i]['length'].' X '.$pkgs[$i]['width'].' X '.$pkgs[$i]['height'].' '.$this->dim_uom.'<br>';
 					echo 'Service: <strong>'.$this->shiptime_data->shipping_service.'</strong><img class="help_tip" style="float:none;" data-tip="'.'Note: This may not be the same service the customer chose during checkout.'.'" src="'.WC()->plugin_url().'/assets/images/help.png" height="16" width="16" /><br>';
@@ -512,10 +513,10 @@ class WC_Order_ShipTime {
 				if (!empty($pkgs)) {
 					for ($i=0,$c=count($pkgs); $i<$c; $i++) {
 						echo "<br><strong>Package ".($i+1)." of {$c}</strong><hr>";
-						
+
 						//echo 'Weight: '.$pkgs[$i]['Weight'].' '.$this->weight_uom.'<br>';
 						//echo 'Dimensions: '.$pkgs[$i]['Length'].' X '.$pkgs[$i]['Width'].' X '.$pkgs[$i]['Height'].' '.$this->dim_uom.'<br>';
-						
+
 						if (stripos($this->shiptime_data->shipping_service, 'FedEx') !== false) {
 							echo "<a target='_new' href='" . self::FEDEX_TRACKING . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
 						} elseif (stripos($this->shiptime_data->shipping_service, 'Canpar') !== false) {
@@ -568,58 +569,58 @@ class WC_Order_ShipTime {
 			$services = $shiptime_settings['services'];
 
 			$markup_fixed = $services[$quote->ServiceId]['markup_fixed'];
-	        $markup_fixed = is_numeric($markup_fixed) && !empty($markup_fixed) ? $markup_fixed : 0;
-	        $markup_percentage = $services[$quote->ServiceId]['markup_percentage'];
-	        $markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage : 0;
+	    $markup_fixed = is_numeric($markup_fixed) && !empty($markup_fixed) ? $markup_fixed : 0;
+	    $markup_percentage = $services[$quote->ServiceId]['markup_percentage'];
+	    $markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage : 0;
 
 			$pre = get_woocommerce_currency_symbol();
 			$base = number_format($quote->BaseCharge->Amount/100.00,2);
 			$fuel = $accessorial = 0.00;
 			foreach ($quote->Surcharges as $surcharge) {
-	            if ($surcharge->Code == 'FUEL') {
-	                $fuel += $surcharge->Price->Amount/100.00;
-	            } else {
-	                $accessorial += $surcharge->Price->Amount/100.00;
-	            }
-	        }
-	        $markup_fixed = number_format($markup_fixed,2);
-	        $markup_percentage = number_format($markup_percentage,2);
-	        $fuel = number_format($fuel,2);
-	        $accessorial = number_format($accessorial,2);
-	        $total_before_tax = number_format($quote->TotalBeforeTaxes->Amount/100.00,2);
-	        $total_after_tax = number_format($quote->TotalCharge->Amount/100.00,2);
-	        $taxes = $total_after_tax-$total_before_tax;
-	        foreach ($quote->Taxes as $tax) {
-	        	$tax_type = $tax->Name;
-	        	break;
-	        }
+	      if ($surcharge->Code == 'FUEL') {
+	        $fuel += $surcharge->Price->Amount/100.00;
+	      } else {
+          $accessorial += $surcharge->Price->Amount/100.00
+        }
+	    }
+	    $markup_fixed = number_format($markup_fixed,2);
+	    $markup_percentage = number_format($markup_percentage,2);
+	    $fuel = number_format($fuel,2);
+	    $accessorial = number_format($accessorial,2);
+	    $total_before_tax = number_format($quote->TotalBeforeTaxes->Amount/100.00,2);
+	    $total_after_tax = number_format($quote->TotalCharge->Amount/100.00,2);
+	    $taxes = $total_after_tax-$total_before_tax;
+	    foreach ($quote->Taxes as $tax) {
+	     	$tax_type = $tax->Name;
+	     	break;
+	    }
 
 			$r['details'] = "Base Charge: ".$pre.$base."<br>";
 			$r['details'] .= "Fuel Surcharge: ".$pre.$fuel."<br>";
 			$r['details'] .= "Other Surcharges: ".$pre.$accessorial."<br>";
 			if ($markup_fixed>0) {
-				$r['details'] .= "Fixed Markup: ".$pre.$markup_fixed."<br>";
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(($total_before_tax+$markup_fixed),2)."<br>";
-				$r['details'] .= $tax_type.": ".$pre.$taxes."<br>";
-				$total = number_format(($total_after_tax+$markup_fixed),2);
-				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
-			} elseif ($markup_percentage>0) {
-				$r['details'] .= "Percentage Markup: ".$markup_percentage."%<br>";
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00,2)."<br>";
-				$r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$taxes*(1+$markup_percentage/100.00))/100.00,2)."<br>";
-				$total = number_format(ceil(100*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00,2);
-				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
-			} else {
-				$r['details'] .= "Total (w/o taxes): ".$pre.$total_before_tax."<br>";
-				$r['details'] .= $tax_type.": ".$pre.$taxes."<br>";
-				$total = $total_after_tax;
-				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
-			}
+			  $r['details'] .= "Fixed Markup: ".$pre.$markup_fixed."<br>";
+			  $r['details'] .= "Total (w/o taxes): ".$pre.number_format(($total_before_tax+$markup_fixed),2)."<br>";
+			  $r['details'] .= $tax_type.": ".$pre.$taxes."<br>";
+			  $total = number_format(($total_after_tax+$markup_fixed),2);
+			  $r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
+      } elseif ($markup_percentage>0) {
+			  $r['details'] .= "Percentage Markup: ".$markup_percentage."%<br>";
+			  $r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00,2)."<br>";
+			  $r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$taxes*(1+$markup_percentage/100.00))/100.00,2)."<br>";
+			  $total = number_format(ceil(100*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00,2);
+			  $r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
+		  } else {
+			  $r['details'] .= "Total (w/o taxes): ".$pre.$total_before_tax."<br>";
+			  $r['details'] .= $tax_type.": ".$pre.$taxes."<br>";
+			  $total = $total_after_tax;
+			  $r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
+		  }
 
-			$r['total'] = $total;
-		}
+		  $r['total'] = $total;
+	  }
 
-		return $r;
+	  return $r;
 	}
 
 	function shiptime_track_shipment() {
@@ -653,7 +654,7 @@ class WC_Order_ShipTime {
 			$req->ShipId = $shiptime_data->emergeit_id;
 			$resp = $this->_shippingClient->cancelShipment($req);
 
-			$wpdb->update( 
+			$wpdb->update(
 				"{$wpdb->prefix}shiptime_order",
 				array(
 					'tracking_nums' => serialize(array()),
@@ -662,13 +663,13 @@ class WC_Order_ShipTime {
 					'emergeit_id' => 1234
 				),
 				array( 'post_id' => $id ),
-				array( 
+				array(
 					'%s',
 					'%s',
 					'%s',
 					'%d'
 				),
-				array( '%d' ) 
+				array( '%d' )
 			);
 
 			// Show notice
@@ -688,7 +689,7 @@ class WC_Order_ShipTime {
 		// Woo order id
 		$id = base64_decode($_GET['shiptime_place_shipment']);
 		$order = $this->get_wc_order($id);
-		
+
 		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 		$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
 		$shiptime_pkgs = unserialize($shiptime_data->package_data);
@@ -706,18 +707,18 @@ class WC_Order_ShipTime {
 				'height' => sanitize_text_field($_GET["parcel_height_{$i}"])
 			);
 		}
-		$wpdb->update( 
+		$wpdb->update(
 			"{$wpdb->prefix}shiptime_order",
 			array(
 				'package_data' => serialize($pkgs),
 				'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method'])
 			),
 			array( 'post_id' => $id ),
-			array( 
+			array(
 				'%s',
 				'%s'
 			),
-			array( '%d' ) 
+			array( '%d' )
 		);
 
 		$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
@@ -736,7 +737,7 @@ class WC_Order_ShipTime {
 		} else {
 			$req->ServiceId = $this->shiptime_domestic[$shiptime_data->shipping_service];
 		}
-		
+
 		// Pull merchant info from ShipTime signup
 		$req->From->Attention = ucwords($shiptime_auth->first_name) . ' ' . ucwords($shiptime_auth->last_name);
 		$req->From->City = ucwords($shiptime_auth->city);
@@ -859,7 +860,7 @@ class WC_Order_ShipTime {
 					'height' => sanitize_text_field($_GET["parcel_height_{$i}"])
 				);
 			}
-			$wpdb->update( 
+			$wpdb->update(
 				"{$wpdb->prefix}shiptime_order",
 				array(
 					'package_data' => serialize($pkgs),
@@ -869,10 +870,10 @@ class WC_Order_ShipTime {
 					'invoice_url' => $resp->InvoiceUrl,
 					'emergeit_id' => $resp->ShipId
 				),
-				array( 
-					'post_id' => $id 
+				array(
+					'post_id' => $id
 				),
-				array( 
+				array(
 					'%s',
 					'%s',
 					'%s',
@@ -880,18 +881,18 @@ class WC_Order_ShipTime {
 					'%s',
 					'%d'
 				),
-				array( 
-					'%d' 
-				) 
+				array(
+					'%d'
+				)
 			);
-			$wpdb->update( 
+			$wpdb->update(
 				"{$wpdb->prefix}woocommerce_order_items",
 				array(
 					'order_item_name' => sanitize_text_field($_GET['shiptime_shipping_method'])
 				),
 				array( 'order_id' => $id, 'order_item_type' => 'shipping' ),
 				array( '%s' ),
-				array( '%d', '%s' ) 
+				array( '%d', '%s' )
 			);
 
 			// Return to order page
@@ -931,18 +932,18 @@ class WC_Order_ShipTime {
 				}
 			}
 		}
-		$wpdb->update( 
+		$wpdb->update(
 			"{$wpdb->prefix}shiptime_order",
 			array(
 				'package_data' => serialize($shiptime_pkgs),
 				'box_codes' => serialize($shiptime_boxs)
 			),
 			array( 'post_id' => $id ),
-			array( 
+			array(
 				'%s',
 				'%s'
 			),
-			array( '%d' ) 
+			array( '%d' )
 		);
 
 		// Return to order page
@@ -965,7 +966,7 @@ class WC_Order_ShipTime {
 			'inner_length' => sanitize_text_field($_GET['shiptime_box_inner_length']),
 			'inner_width' => sanitize_text_field($_GET['shiptime_box_inner_width']),
 			'inner_height' => sanitize_text_field($_GET['shiptime_box_inner_height']),
-			'weight' => sanitize_text_field($_GET['shiptime_box_weight'])			
+			'weight' => sanitize_text_field($_GET['shiptime_box_weight'])
 		);
 		$shiptime_settings = get_option('woocommerce_shiptime_settings');
 		$shiptime_settings['boxes'][] = $new_box;
@@ -983,18 +984,18 @@ class WC_Order_ShipTime {
 			$shiptime_pkgs[$pid]['width'] = $new_box['outer_width'];
 			$shiptime_pkgs[$pid]['height'] = $new_box['outer_height'];
 		}
-		$wpdb->update( 
+		$wpdb->update(
 			"{$wpdb->prefix}shiptime_order",
 			array(
 				'package_data' => serialize($shiptime_pkgs),
 				'box_codes' => serialize($shiptime_boxs)
 			),
 			array( 'post_id' => $id ),
-			array( 
+			array(
 				'%s',
 				'%s'
 			),
-			array( '%d' ) 
+			array( '%d' )
 		);
 
 		// Return to order page
@@ -1029,18 +1030,18 @@ class WC_Order_ShipTime {
 			}
 		}
 
-		$wpdb->update( 
+		$wpdb->update(
 			"{$wpdb->prefix}shiptime_order",
 			array(
 				'package_data' => serialize($shiptime_pkgs),
 				'box_codes' => serialize($shiptime_boxs)
 			),
 			array( 'post_id' => $id ),
-			array( 
+			array(
 				'%s',
 				'%s'
 			),
-			array( '%d' ) 
+			array( '%d' )
 		);
 
 		// Return to order page
@@ -1060,7 +1061,7 @@ class WC_Order_ShipTime {
 		$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
 		$shiptime_pkgs = unserialize($shiptime_data->package_data);
 		$shiptime_boxs = unserialize($shiptime_data->box_codes);
-		
+
 		if (count($shiptime_boxs) > $pid) {
 			unset($shiptime_boxs[$pid]);
 		}
@@ -1069,18 +1070,18 @@ class WC_Order_ShipTime {
 			unset($shiptime_pkgs[$pid]);
 		}
 
-		$wpdb->update( 
+		$wpdb->update(
 			"{$wpdb->prefix}shiptime_order",
 			array(
 				'package_data' => serialize(array_values($shiptime_pkgs)),
 				'box_codes' => serialize(array_values($shiptime_boxs))
 			),
 			array( 'post_id' => $id ),
-			array( 
+			array(
 				'%s',
 				'%s'
 			),
-			array( '%d' ) 
+			array( '%d' )
 		);
 
 		// Return to order page
@@ -1113,26 +1114,26 @@ class WC_Order_ShipTime {
 					'height' => sanitize_text_field($_GET["parcel_height_{$i}"])
 				);
 			}
-			$wpdb->update( 
+			$wpdb->update(
 				"{$wpdb->prefix}shiptime_order",
 				array(
 					'package_data' => serialize($pkgs),
 					'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method'])
 				),
 				array( 'post_id' => $id ),
-				array( 
+				array(
 					'%s',
 					'%s'
 				),
-				array( '%d' ) 
+				array( '%d' )
 			);
 
 			$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
 			$shiptime_pkgs = unserialize($shiptime_data->package_data);
 			$shiptime_settings = get_option('woocommerce_shiptime_settings');
-	        
-	        // Setup XML Request
-            $req = new emergeit\GetRatesRequest();
+
+	    // Setup XML Request
+      $req = new emergeit\GetRatesRequest();
 
 			// Pull merchant info from ShipTime signup
 			$req->From->Attention = ucwords($shiptime_auth->first_name) . ' ' . ucwords($shiptime_auth->last_name);
@@ -1188,28 +1189,28 @@ class WC_Order_ShipTime {
 			}
 			$req->DeferredProcessing = false;
 
-            // Int'l Shipment?
-            if (!$is_domestic) {
-                // Customs Invoice Required
-                $dt = new emergeit\DutiesAndTaxes();
-                $dt->Dutiable = true;
-                $dt->Selection = 'SHIPPER'; // 'CONSIGNEE'
-                $req->CustomsInvoice->DutiesAndTaxes = $dt;
+      // Int'l Shipment?
+      if (!$is_domestic) {
+        // Customs Invoice Required
+        $dt = new emergeit\DutiesAndTaxes();
+        $dt->Dutiable = true;
+        $dt->Selection = 'SHIPPER'; // 'CONSIGNEE'
+        $req->CustomsInvoice->DutiesAndTaxes = $dt;
 
-                $ic = new emergeit\InvoiceContact();
-                $ic->City = '-';
-                $ic->CompanyName = '-';
-                $ic->CountryCode = '-';
-                $ic->Email = '-';
-                $ic->Phone = '-';
-                $ic->PostalCode = '-';
-                $ic->Province = '-';
-                $ic->StreetAddress = '-';
-                $ic->CustomsBroker = '-';
-                $ic->ShipperTaxId = '-';
-                $req->CustomsInvoice->InvoiceContact = $ic;
+        $ic = new emergeit\InvoiceContact();
+        $ic->City = '-';
+        $ic->CompanyName = '-';
+        $ic->CountryCode = '-';
+        $ic->Email = '-';
+        $ic->Phone = '-';
+        $ic->PostalCode = '-';
+        $ic->Province = '-';
+        $ic->StreetAddress = '-';
+        $ic->CustomsBroker = '-';
+        $ic->ShipperTaxId = '-';
+        $req->CustomsInvoice->InvoiceContact = $ic;
 
-                $req->CustomsInvoice->InvoiceItems = array();
+        $req->CustomsInvoice->InvoiceItems = array();
 				foreach ( $order->get_items( array( 'line_item' ) ) as $item_id => $item ) {
 					$product = $order->get_product_from_item( $item );
 
@@ -1223,80 +1224,80 @@ class WC_Order_ShipTime {
 
 					$req->CustomsInvoice->InvoiceItems[] = $i;
 				}
-            } else {
-                unset($req->CustomsInvoice);
-            }
+      } else {
+        unset($req->CustomsInvoice);
+      }
 
-            // New API call
-            $shipRates = $this->_ratingClient->getRates($req);
+      // New API call
+      $shipRates = $this->_ratingClient->getRates($req);
 
-	       	if (!empty($shipRates->AvailableRates)) {
-	       		foreach ($shipRates->AvailableRates as $shipRate) {
-	       			$l = strpos($shipRate->ServiceName, $shipRate->CarrierName) !== false ? $shipRate->ServiceName : $shipRate->CarrierName . " " . (!$is_domestic && stripos($shipRate->ServiceName, 'Ground') !== false ? "International " : "") . $shipRate->ServiceName;
-	       			if (strtolower($l) == strtolower(sanitize_text_field($_GET['shiptime_shipping_method']))) {
-	       				$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_order_currency()));
-						$rate_info = $this->shiptime_rate_breakdown($shipRate);
+	    if (!empty($shipRates->AvailableRates)) {
+	    	foreach ($shipRates->AvailableRates as $shipRate) {
+	    		$l = strpos($shipRate->ServiceName, $shipRate->CarrierName) !== false ? $shipRate->ServiceName : $shipRate->CarrierName . " " . (!$is_domestic && stripos($shipRate->ServiceName, 'Ground') !== false ? "International " : "") . $shipRate->ServiceName;
+	      	if (strtolower($l) == strtolower(sanitize_text_field($_GET['shiptime_shipping_method']))) {
+	      		$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_order_currency()));
+					  $rate_info = $this->shiptime_rate_breakdown($shipRate);
 						if (array_key_exists('total', $rate_info) && array_key_exists('details', $rate_info)) {
 							$msg = '<strong>'.$l.'</strong><br>'.$rate_info['details'];
 							$new_rate = $rate_info['total'];
 						}
-	       				break;
-	       			}
-	       		}
+	       		break;
+	       	}
+	      }
+	    } else {
+	      $msg = "Unable to determine shipping rates.";
+	      $err = true;
+	    }
+
+	    if (!empty($msg)) {
+	      if ($err) {
+				  echo '<div class="error"><p>'.$msg.'</p></div>';
+	      } else {
+	        $current_rate = (float)preg_replace('/&.*?;/', '', strip_tags($current_rate));
+	        $new_rate = (float)preg_replace('/&.*?;/', '', strip_tags($new_rate));
+	        if ($new_rate == $current_rate) {
+	          $recalc = "<span style='padding:5px;display:block;background-color:#efefef;color:#444'>Shipping rate for this order recalculted to be the same as the rate your customer paid.</span>";
+	        } elseif ($new_rate > $current_rate) {
+	        	$recalc = "<span style='padding:5px;display:block;background-color:#f6e5e5;color:#A00'>Note: New shipping rate for this order is " . wc_price($new_rate) . ", which is " . wc_price($new_rate-$current_rate) . " more than the rate your customer paid.</span>";
 	        } else {
-	            	$msg = "Unable to determine shipping rates.";
-	            	$err = true;
+	        	$recalc = "<span style='padding:5px;display:block;background-color:#e5f6e5;color:#0A0'>Note: New shipping rate for this order is " . wc_price($new_rate) . ", which is " . wc_price($current_rate-$new_rate) . " less than the rate your customer paid.</span>";
 	        }
 
-	        if (!empty($msg)) {
-	        	if ($err) {
-					echo '<div class="error"><p>'.$msg.'</p></div>';
-	        	} else {
-	        		$current_rate = (float)preg_replace('/&.*?;/', '', strip_tags($current_rate));
-	        		$new_rate = (float)preg_replace('/&.*?;/', '', strip_tags($new_rate));
-	        		if ($new_rate == $current_rate) {
-	        			$recalc = "<span style='padding:5px;display:block;background-color:#efefef;color:#444'>Shipping rate for this order recalculted to be the same as the rate your customer paid.</span>";
-	        		} elseif ($new_rate > $current_rate) {
-	        			$recalc = "<span style='padding:5px;display:block;background-color:#f6e5e5;color:#A00'>Note: New shipping rate for this order is " . wc_price($new_rate) . ", which is " . wc_price($new_rate-$current_rate) . " more than the rate your customer paid.</span>";
-	        		} else {
-	        			$recalc = "<span style='padding:5px;display:block;background-color:#e5f6e5;color:#0A0'>Note: New shipping rate for this order is " . wc_price($new_rate) . ", which is " . wc_price($current_rate-$new_rate) . " less than the rate your customer paid.</span>";
-	        		}
-
-        			$wpdb->update( 
+        	$wpdb->update(
 						"{$wpdb->prefix}shiptime_order",
 						array(
 							'recalc' => $recalc,
 							'recalc_rate' => number_format($new_rate, 2)
 						),
 						array( 'post_id' => $id ),
-						array( 
+						array(
 							'%s','%f'
 						),
-						array( '%d' ) 
+						array( '%d' )
 					);
 
 					echo '<div class="updated"><p>'.$msg.'</p></div>';
 				}
-	        }
 	    }
+	  }
 
 	}
 
 	function get_wc_shipping_method($order) {
 		$shipping_methods = $order->get_shipping_methods();
-	
+
 		if (!$shipping_methods) {
 			return false;
 		}
 
 		return array_shift($shipping_methods);
 	}
-	
+
 	function get_wc_order($orderId) {
 		if (!class_exists('WC_Order')) {
 			return false;
 		}
-		return new WC_Order($orderId);      
+		return new WC_Order($orderId);
 	}
 
 	function obj_check($obj, $prop) {
