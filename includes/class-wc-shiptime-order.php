@@ -146,8 +146,8 @@ class WC_Order_ShipTime {
 
 		$oid = trim($_GET['post']);
 
-		$this->weight_uom = 'LBS';
-		$this->dim_uom = 'IN';
+		$this->weight_uom = strtoupper(get_option( 'woocommerce_weight_unit' ));
+		$this->dim_uom = strtoupper(get_option( 'woocommerce_dimension_unit' ));
 		$this->shipping_meta = array();
 		$this->shiptime_data = array();
 
@@ -316,10 +316,12 @@ class WC_Order_ShipTime {
 						<p>
 							<?php
 							$shiptime_settings = get_option('woocommerce_shiptime_settings');
+							$weight_uom = strtoupper(get_option( 'woocommerce_weight_unit' ));
+							$dim_uom = strtoupper(get_option( 'woocommerce_dimension_unit' ));
 							foreach ($shiptime_settings['boxes'] as $box) {
 								echo "<input type='checkbox' class='choose_box' name='box_choice[]' value='" . $box['label'] . "'><strong>" . $box['label'] . "</strong><br>";
-								echo "Outside Dimensions: {$box['outer_length']} X {$box['outer_width']} X {$box['outer_height']} IN<br>";
-								echo "Inside Dimensions: {$box['inner_length']} X {$box['inner_width']} X {$box['inner_height']} IN<br>Packing Weight: {$box['weight']} LBS<br><br>";
+								echo "Outside Dimensions: {$box['outer_length']} X {$box['outer_width']} X {$box['outer_height']} {$dim_uom}<br>";
+								echo "Inside Dimensions: {$box['inner_length']} X {$box['inner_width']} X {$box['inner_height']} {$dim_uom}<br>Packing Weight: {$box['weight']} {$weight_uom}<br><br>";
 							}
 							?>
 							<a href="<?php echo admin_url( '/?shiptime_box_selection='.base64_encode( $post->ID  ) ); ?>" class="button-primary choose_box">Submit</a>
@@ -338,36 +340,40 @@ class WC_Order_ShipTime {
 							table.box td label { font-weight: bold; text-align: right; display: block; }
 							</style>
 							<table class='box'>
+								<?php
+									$weight_uom = strtolower(get_option( 'woocommerce_weight_unit' ));
+									$dim_uom = strtolower(get_option( 'woocommerce_dimension_unit' ));
+								?>
 								<tr>
 									<td><label for="shiptime_box_label">Label</label></td>
 									<td><input type="text" id="shiptime_box_label" name="shiptime_box_label">
 								</tr>
 								<tr>
-									<td><label for="shiptime_box_outer_length">Total Length (in)</label>
+									<td><label for="shiptime_box_outer_length">Total Length (<?php echo $dim_uom; ?>)</label>
 									<td><input type="text" id="shiptime_box_outer_length" name="shiptime_box_outer_length">
 								</tr>
 								<tr>
-									<td><label for="shiptime_box_outer_width">Total Width (in)</label>
+									<td><label for="shiptime_box_outer_width">Total Width (<?php echo $dim_uom; ?>)</label>
 									<td><input type="text" id="shiptime_box_outer_width" name="shiptime_box_outer_width">
 								</tr>
 								<tr>
-									<td><label for="shiptime_box_outer_height">Total Height (in)</label>
+									<td><label for="shiptime_box_outer_height">Total Height (<?php echo $dim_uom; ?>)</label>
 									<td><input type="text" id="shiptime_box_outer_height" name="shiptime_box_outer_height">
 								</tr>
 								<tr>
-									<td><label for="shiptime_box_inner_length">Inner Length (in)</label>
+									<td><label for="shiptime_box_inner_length">Inner Length (<?php echo $dim_uom; ?>)</label>
 									<td><input type="text" id="shiptime_box_inner_length" name="shiptime_box_inner_length">
 								</tr>
 								<tr>
-									<td><label for="shiptime_box_inner_width">Inner Width (in)</label>
+									<td><label for="shiptime_box_inner_width">Inner Width (<?php echo $dim_uom; ?>)</label>
 									<td><input type="text" id="shiptime_box_inner_width" name="shiptime_box_inner_width">
 								</tr>
 								<tr>
-									<td><label for="shiptime_box_inner_height">Inner Height (in)</label>
+									<td><label for="shiptime_box_inner_height">Inner Height (<?php echo $dim_uom; ?>)</label>
 									<td><input type="text" id="shiptime_box_inner_height" name="shiptime_box_inner_height">
 								</tr>
 								<tr>
-									<td><label for="shiptime_box_weight">Packing Weight (lbs)&nbsp;<img class="help_tip" style="float:none;" data-tip="Packing Weight = (Weight of Empty Box) + (Weight of Packing Materials)" src="<?php echo WC()->plugin_url();?>/assets/images/help.png" height="16" width="16" /></label>
+									<td><label for="shiptime_box_weight">Packing Weight (<?php echo $weight_uom; ?>)&nbsp;<img class="help_tip" style="float:none;" data-tip="Packing Weight = (Weight of Empty Box) + (Weight of Packing Materials)" src="<?php echo WC()->plugin_url();?>/assets/images/help.png" height="16" width="16" /></label>
 									<td><input type="text" id="shiptime_box_weight" name="shiptime_box_weight">
 								</tr>
 							</table>
@@ -408,10 +414,12 @@ class WC_Order_ShipTime {
 				<p>
 					<?php
 					$shiptime_settings = get_option('woocommerce_shiptime_settings');
+					$weight_uom = strtoupper(get_option( 'woocommerce_weight_unit' ));
+					$dim_uom = strtoupper(get_option( 'woocommerce_dimension_unit' ));
 					foreach ($shiptime_settings['boxes'] as $box) {
 						echo "<input type='checkbox' class='choose_box' name='box_choice[]' value='" . $box['label'] . "'><strong>" . $box['label'] . "</strong><br>";
-						echo "Outside Dimensions: {$box['outer_length']} X {$box['outer_width']} X {$box['outer_height']} IN<br>";
-						echo "Inside Dimensions: {$box['inner_length']} X {$box['inner_width']} X {$box['inner_height']} IN<br>Packing Weight: {$box['weight']} LBS<br><br>";
+						echo "Outside Dimensions: {$box['outer_length']} X {$box['outer_width']} X {$box['outer_height']} {$dim_uom}<br>";
+						echo "Inside Dimensions: {$box['inner_length']} X {$box['inner_width']} X {$box['inner_height']} {$dim_uom}<br>Packing Weight: {$box['weight']} {$weight_uom}<br><br>";
 						}
 					?>
 					<a href="<?php echo admin_url( '/?shiptime_pkg_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary choose_box">Submit</a>
@@ -775,13 +783,13 @@ class WC_Order_ShipTime {
 		foreach ($shiptime_pkgs as $pkg) {
 			$item = new emergeit\LineItem();
 			$item->Length->UnitsType = 'IN';
-			$item->Length->Value = $pkg['length'];
+			$item->Length->Value = woocommerce_get_dimension($pkg['length'], 'in');
 			$item->Width->UnitsType = 'IN';
-			$item->Width->Value = $pkg['width'];
+			$item->Width->Value = woocommerce_get_dimension($pkg['width'], 'in');
 			$item->Height->UnitsType = 'IN';
-			$item->Height->Value = $pkg['height'];
+			$item->Height->Value = woocommerce_get_dimension($pkg['height'], 'in');
 			$item->Weight->UnitsType = 'LB';
-			$item->Weight->Value = $pkg['weight'];
+			$item->Weight->Value = woocommerce_get_weight($pkg['weight'], 'lbs');
 
 			if ($order->shipping_country != $shiptime_auth->country) {
 				$desc = array();
@@ -1159,13 +1167,13 @@ class WC_Order_ShipTime {
 			foreach ($shiptime_pkgs as $pkg) {
 				$item = new emergeit\LineItem();
 				$item->Length->UnitsType = 'IN';
-				$item->Length->Value = $pkg['length'];
+				$item->Length->Value = woocommerce_get_dimension($pkg['length'], 'in');
 				$item->Width->UnitsType = 'IN';
-				$item->Width->Value = $pkg['width'];
+				$item->Width->Value = woocommerce_get_dimension($pkg['width'], 'in');
 				$item->Height->UnitsType = 'IN';
-				$item->Height->Value = $pkg['height'];
+				$item->Height->Value = woocommerce_get_dimension($pkg['height'], 'in');
 				$item->Weight->UnitsType = 'LB';
-				$item->Weight->Value = $pkg['weight'];
+				$item->Weight->Value = woocommerce_get_weight($pkg['weight'], 'lbs');
 
 				if (!$is_domestic) {
 					$desc = array();

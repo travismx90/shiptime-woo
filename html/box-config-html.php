@@ -17,15 +17,19 @@
 		<table class="box_config widefat">
 			<thead>
 				<tr>
+					<?php
+						$dim_uom = get_option( 'woocommerce_dimension_unit' );
+						$weight_uom = get_option( 'woocommerce_weight_unit' );
+					?>
 					<th class="check-column"><input style="margin:1px 0 0 -1px !important" type="checkbox" /></th>
 					<th>Label</th>
-					<th>Total Length (in)</th>
-					<th>Total Width (in)</th>
-					<th>Total Height (in)</th>
-					<th>Inner Length (in)</th>
-					<th>Inner Width (in)</th>
-					<th>Inner Height (in)</th>
-					<th>Packing Weight (lbs) &nbsp; <img class="help_tip" style="float:none;" data-tip="<?php _e( 'Packing Weight = (Weight of Empty Box) + (Weight of Packing Materials)', 'wc_shiptime' ); ?>" src="<?php echo WC()->plugin_url();?>/assets/images/help.png" height="16" width="16" />
+					<th>Total Length (<?php echo $dim_uom; ?>)</th>
+					<th>Total Width (<?php echo $dim_uom; ?>)</th>
+					<th>Total Height (<?php echo $dim_uom; ?>)</th>
+					<th>Inner Length (<?php echo $dim_uom; ?>)</th>
+					<th>Inner Width (<?php echo $dim_uom; ?>)</th>
+					<th>Inner Height (<?php echo $dim_uom; ?>)</th>
+					<th>Packing Weight (<?php echo $weight_uom; ?>) &nbsp; <img class="help_tip" style="float:none;" data-tip="<?php _e( 'Packing Weight = (Weight of Empty Box) + (Weight of Packing Materials)', 'wc_shiptime' ); ?>" src="<?php echo WC()->plugin_url();?>/assets/images/help.png" height="16" width="16" />
 					</th>
 				</tr>
 			</thead>

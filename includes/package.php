@@ -49,17 +49,33 @@ class Package {
 		return $this->Length;
 	}
 
+    public function setLength($val) {
+        $this->Length = $val;
+    }
+
 	public function getWidth() {
 		return $this->Width;
 	}
+
+    public function setWidth($val) {
+        $this->Width = $val;
+    }
 
 	public function getHeight() {
 		return $this->Height;
 	}
 
+    public function setHeight($val) {
+        $this->Height = $val;
+    }
+
 	public function getWeight() {
 		return $this->Weight;
 	}
+
+    public function setWeight($val) {
+        $this->Weight = $val;
+    }
 
     public function setDimUnit($uom) {
         // Set unit of measure for dimensions

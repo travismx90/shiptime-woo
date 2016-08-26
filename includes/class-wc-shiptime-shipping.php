@@ -403,7 +403,21 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                 // Convert Items array to Packages array
                 $sh = new emergeit\ShipmentBuilder();
                 $sh->setItems($items);
-                $packages = $sh->package($this->boxes);
+                $boxes = array();
+                // Normalize units of measure for API
+                foreach ($this->boxes as $box) {
+                    $boxes[] = array(
+                        'label' => $box['label'],
+                        'weight' => woocommerce_get_weight($box['weight'], 'lbs'),
+                        'inner_length' => woocommerce_get_dimension($box['inner_length'], 'in'),
+                        'inner_width' => woocommerce_get_dimension($box['inner_width'], 'in'),
+                        'inner_height' => woocommerce_get_dimension($box['inner_height'], 'in'),
+                        'outer_length' => woocommerce_get_dimension($box['outer_length'], 'in'),
+                        'outer_width' => woocommerce_get_dimension($box['outer_width'], 'in'),
+                        'outer_height' => woocommerce_get_dimension($box['outer_height'], 'in')
+                    );
+                }
+                $packages = $sh->package($boxes);
                 
                 foreach ($packages as $package) {
                     $item = new emergeit\LineItem();
@@ -457,6 +471,14 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
                     // Store response into DB
                     // Used to retrieve package level details later
                     if (!$cached) {
+                        // Account for Metric/Imperial
+                        foreach ($packages as $package) {
+                            // Convert back from LB/IN (returned from API) to Metric if necessary (based on Woo setting)
+                            $package->setWeight(round(wc_get_weight($package->getWeight(), get_option( 'woocommerce_weight_unit' ), 'lbs'), 1));
+                            $package->setLength(round(wc_get_dimension($package->getLength(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
+                            $package->setWidth(round(wc_get_dimension($package->getWidth(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
+                            $package->setHeight(round(wc_get_dimension($package->getHeight(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
+                        }
                         $wpdb->insert(
                             $wpdb->prefix.'shiptime_quote',
                             array(
