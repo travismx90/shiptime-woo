@@ -406,16 +406,16 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
         $boxes = array();
         // Normalize units of measure for API
         foreach ($this->boxes as $box) {
-            $boxes[] = array(
-                'label' => $box['label'],
-                'weight' => woocommerce_get_weight($box['weight'], 'lbs'),
-                'inner_length' => woocommerce_get_dimension($box['inner_length'], 'in'),
-                'inner_width' => woocommerce_get_dimension($box['inner_width'], 'in'),
-                'inner_height' => woocommerce_get_dimension($box['inner_height'], 'in'),
-                'outer_length' => woocommerce_get_dimension($box['outer_length'], 'in'),
-                'outer_width' => woocommerce_get_dimension($box['outer_width'], 'in'),
-                'outer_height' => woocommerce_get_dimension($box['outer_height'], 'in')
-            );
+          $boxes[] = array(
+            'label' => $box['label'],
+            'weight' => woocommerce_get_weight($box['weight'], 'lbs'),
+            'inner_length' => woocommerce_get_dimension($box['inner_length'], 'in'),
+            'inner_width' => woocommerce_get_dimension($box['inner_width'], 'in'),
+            'inner_height' => woocommerce_get_dimension($box['inner_height'], 'in'),
+            'outer_length' => woocommerce_get_dimension($box['outer_length'], 'in'),
+            'outer_width' => woocommerce_get_dimension($box['outer_width'], 'in'),
+            'outer_height' => woocommerce_get_dimension($box['outer_height'], 'in')
+          );
         }
         $packages = $sh->package($boxes);
 
@@ -455,8 +455,8 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
           $shipRates = $this->ratingClient->getRates($req);
 
           if ($shipRates) {
-              // Cache quote data for 30 mins
-              set_transient($transient, serialize($shipRates), 30 * MINUTE_IN_SECONDS);
+            // Cache quote data for 30 mins
+            set_transient($transient, serialize($shipRates), 30 * MINUTE_IN_SECONDS);
           }
         }
 
@@ -482,13 +482,13 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
             $wpdb->insert(
               $wpdb->prefix.'shiptime_quote',
               array(
-                  'order_id' => 0,
-                  'cart_sessid' => array_shift(array_keys($woocommerce->session->cart)),
-                  'quote' => serialize($shipRates),
-                  'packages' => serialize($packages)
+                'order_id' => 0,
+                'cart_sessid' => array_shift(array_keys($woocommerce->session->cart)),
+                'quote' => serialize($shipRates),
+                'packages' => serialize($packages)
               ),
               array(
-                  '%d', '%s', '%s', '%s'
+                '%d', '%s', '%s', '%s'
               )
             );
           }
@@ -533,7 +533,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
           uasort($sortedRates, array($this, 'sortRates'));
 
           foreach ($sortedRates as $rate) {
-              $this->add_rate($rate);
+            $this->add_rate($rate);
           }
 
         } else {
