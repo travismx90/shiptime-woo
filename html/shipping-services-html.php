@@ -13,9 +13,9 @@
 			<tbody>
 				<?php
 			    function sortServices($sort) {
-			        if (empty($sort)) { return false; }
-			        uasort($sort, 'serviceSorting');
-			        return $sort;
+			      if (empty($sort)) { return false; }
+			      uasort($sort, 'serviceSorting');
+			      return $sort;
 			    }
 			    function serviceSorting($a, $b) {
 			    	return strcmp($a['CarrierName'], $b['CarrierName']);
