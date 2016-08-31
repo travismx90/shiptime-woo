@@ -8,16 +8,15 @@ require_once('types.php');
 class SignupClient extends ApiClientBase
 {
 	private $_defaultBaseUrl = 'http://ship.emergeit.com/api';
-	//private $_defaultBaseUrl = 'http://ship.appspace.ca/api';
 	//private $_defaultBaseUrl = 'http://sandbox.shiptime.com/api';
-	
+
 	public function __construct($baseUrl=null, $wsdlUri=null)
-	{	
+	{
 		if ($baseUrl === null)
 		{
 			$baseUrl = $this->_defaultBaseUrl;
 		}
-	
+
 		parent::__construct(null, null, $baseUrl, 'signup?wsdl');
 	}
 
@@ -26,7 +25,7 @@ class SignupClient extends ApiClientBase
 		$soapResp = $this->apiRequest('signup', $req);
 		$resp = new SignupResponse();
 		$this->populateObject($soapResp, $resp);
-	
+
 		return $resp;
 	}
 
@@ -35,7 +34,7 @@ class SignupClient extends ApiClientBase
 		$soapResp = $this->apiRequest('getServices', $req);
 		$resp = new GetServicesResponse();
 		$this->populateObject($soapResp, $resp);
-	
+
 		return $resp;
 	}
 }
@@ -55,7 +54,7 @@ class SignupRequest extends EmergeitApiRequest
 	public $Phone = null;
 	public $PostalCode = null;
 	public $State = null;
-	
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -63,7 +62,7 @@ class SignupRequest extends EmergeitApiRequest
 }
 
 class SignupResponse extends EmergeitApiResponse
-{	
+{
 	public $key = null;
 
 	public function __construct()
@@ -77,7 +76,7 @@ class GetServicesRequest extends EmergeitApiRequest
 {
 	public $IntegrationID = null;
 	public $Credentials = null;
-	
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -86,7 +85,7 @@ class GetServicesRequest extends EmergeitApiRequest
 }
 
 class GetServicesResponse extends EmergeitApiResponse
-{	
+{
 	public $ServiceOptions = null;
 
 	public function __construct()

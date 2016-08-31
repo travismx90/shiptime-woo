@@ -580,7 +580,7 @@ class WC_Order_ShipTime {
 	      if ($surcharge->Code == 'FUEL') {
 	        $fuel += $surcharge->Price->Amount/100.00;
 	      } else {
-          $accessorial += $surcharge->Price->Amount/100.00
+          $accessorial += $surcharge->Price->Amount/100.00;
         }
 	    }
 	    $markup_fixed = number_format($markup_fixed,2);
@@ -771,7 +771,7 @@ class WC_Order_ShipTime {
 		}
 		$req->To->City = $ship_city;
 		$req->To->Phone = $bill_addr['phone'];
-		$req->To->CompanyName = !empty($ship_addr['company']) ? $ship_addr['company'] : '-';
+		$req->To->CompanyName = !empty($ship_addr['company']) ? $ship_addr['company'] : 'NA';
 		$req->To->CountryCode = $ship_addr['country'];
 		$req->To->Email = $bill_addr['email'];
 		$req->To->PostalCode = $ship_addr['postcode'];
@@ -790,7 +790,9 @@ class WC_Order_ShipTime {
 			$item->Height->UnitsType = 'IN';
 			$item->Height->Value = woocommerce_get_dimension($pkg['height'], 'in');
 			$item->Weight->UnitsType = 'LB';
-			$item->Weight->Value = woocommerce_get_weight($pkg['weight'], 'lbs');
+      // TODO: Support packages < 1 LB
+			$pkg_weight = woocommerce_get_weight($pkg['weight'], 'lbs');
+      $item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 
 			if ($order->shipping_country != $shiptime_auth->country) {
 				$desc = array();
@@ -816,7 +818,7 @@ class WC_Order_ShipTime {
 
 			$ic = new emergeit\InvoiceContact();
 			$ic->City = ucwords($bill_addr['city']);
-			$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : '-';
+			$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : 'NA';
 			$ic->CountryCode = $order->shipping_country;
 			$ic->Email = $bill_addr['email'];
 			$ic->Phone = $bill_addr['phone'];
@@ -1174,7 +1176,9 @@ class WC_Order_ShipTime {
 				$item->Height->UnitsType = 'IN';
 				$item->Height->Value = woocommerce_get_dimension($pkg['height'], 'in');
 				$item->Weight->UnitsType = 'LB';
-				$item->Weight->Value = woocommerce_get_weight($pkg['weight'], 'lbs');
+        // TODO: Support packages < 1 LB
+				$pkg_weight = woocommerce_get_weight($pkg['weight'], 'lbs');
+        $item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 
 				if (!$is_domestic) {
 					$desc = array();
@@ -1198,14 +1202,14 @@ class WC_Order_ShipTime {
         $req->CustomsInvoice->DutiesAndTaxes = $dt;
 
         $ic = new emergeit\InvoiceContact();
-        $ic->City = '-';
-        $ic->CompanyName = '-';
-        $ic->CountryCode = '-';
-        $ic->Email = '-';
-        $ic->Phone = '-';
-        $ic->PostalCode = '-';
-        $ic->Province = '-';
-        $ic->StreetAddress = '-';
+			  $ic->City = ucwords($bill_addr['city']);
+			  $ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : 'NA';
+			  $ic->CountryCode = $order->shipping_country;
+			  $ic->Email = $bill_addr['email'];
+			  $ic->Phone = $bill_addr['phone'];
+			  $ic->PostalCode = $bill_addr['postcode'];
+			  $ic->Province = $bill_addr['state'];
+			  $ic->StreetAddress = ucwords($bill_addr['address_1']);
         $ic->CustomsBroker = '-';
         $ic->ShipperTaxId = '-';
         $req->CustomsInvoice->InvoiceContact = $ic;

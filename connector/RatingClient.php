@@ -6,9 +6,8 @@ require_once('ApiClientBase.php');
 require_once('types.php');
 
 class RatingClient extends ApiClientBase
-{	
+{
 	private $_defaultBaseUrl = 'http://ship.emergeit.com/api';
-	//private $_defaultBaseUrl = 'http://ship.appspace.ca/api';
 	//private $_defaultBaseUrl = 'http://sandbox.shiptime.com/api';
 
 	public function __construct($encUsername, $encPassword, $baseUrl = null)
@@ -17,16 +16,16 @@ class RatingClient extends ApiClientBase
 		{
 			$baseUrl = $this->_defaultBaseUrl;
 		}
-	
+
 		parent::__construct($encUsername, $encPassword, $baseUrl, 'rating?wsdl');
 	}
-	
+
 	public function getRates(GetRatesRequest $req)
 	{
 		$soapResp = $this->apiRequest('getRates', $req);
 		$resp = new GetRatesResponse();
 		$this->populateObject($soapResp, $resp);
-	
+
 		return $resp;
 	}
 
@@ -35,7 +34,7 @@ class RatingClient extends ApiClientBase
 		$soapResp = $this->apiRequest('getLocation', $req);
 		$resp = new GetLocationResponse();
 		$this->populateObject($soapResp, $resp);
-	
+
 		return $resp;
 	}
 }
@@ -49,7 +48,7 @@ class GetRatesRequest extends EmergeitApiRequest
 	public $ShipmentItems = null;
 	public $ShipDate = null;
 	public $CustomsInvoice = null;
-	
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -64,7 +63,7 @@ class GetRatesRequest extends EmergeitApiRequest
 class GetRatesResponse extends EmergeitApiResponse
 {
 	public $AvailableRates = null;
-	
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -76,7 +75,7 @@ class GetLocationRequest extends EmergeitApiRequest
 {
 	public $CountryCode = null;
 	public $PostalCode = null;
-	
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -86,7 +85,7 @@ class GetLocationRequest extends EmergeitApiRequest
 class GetLocationResponse extends EmergeitApiResponse
 {
 	public $Location = null;
-	
+
 	public function __construct()
 	{
 		parent::__construct();

@@ -284,7 +284,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
       if (!empty($package['destination']['country'])) {
         $dest_country = $package['destination']['country'];
         $dest_postcode = !empty($package['destination']['postcode']) ? $package['destination']['postcode'] : '';
-        $dest_state = ($package['destination']['country'] == 'US' && !empty($package['destination']['state'])) ? $package['destination']['state'] : '';
+        $dest_state = !empty($package['destination']['state']) ? $package['destination']['state'] : '';
 
         // Check if customer has set required destination info
         if ( ( ($dest_country == 'US' || $dest_country == 'CA') && empty($dest_postcode) ) ) {
@@ -429,7 +429,9 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
           $item->Height->UnitsType = $package->getDimUnit();
           $item->Height->Value = $package->getHeight();
           $item->Weight->UnitsType = $package->getWeightUnit();
-          $item->Weight->Value = $package->getWeight();
+          // TODO: Support packages < 1 LB
+          $pkg_weight = $package->getWeight();
+          $item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
           $item->Description = 'Item Line Description';
 
           $req->ShipmentItems[] = $item;
