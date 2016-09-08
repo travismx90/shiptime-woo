@@ -589,7 +589,7 @@ class WC_Order_ShipTime {
 	    $accessorial = number_format($accessorial,2);
 	    $total_before_tax = number_format($quote->TotalBeforeTaxes->Amount/100.00,2);
 	    $total_after_tax = number_format($quote->TotalCharge->Amount/100.00,2);
-	    $taxes = $total_after_tax-$total_before_tax;
+	    $taxes = number_format($total_after_tax-$total_before_tax,2);
 	    foreach ($quote->Taxes as $tax) {
 	     	$tax_type = $tax->Name;
 	     	break;

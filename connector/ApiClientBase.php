@@ -7,24 +7,36 @@ abstract class ApiClientBase
 	private $_encUsername = null;
 	private $_encPassword = null;
 	private $_wsdlUrl = null;
-	
+
 	private $_soapClient = null;
-	
+
 	protected function __construct($encUsername, $encPassword, $baseUrl, $wsdlUri)
 	{
 		$this->_encUsername = $encUsername;
 		$this->_encPassword = $encPassword;
-		
+
 		if (substr($baseUrl, -1) != '/')
 		{
 			$baseUrl .= '/';
 		}
-		
+
 		$this->_wsdlUrl = $baseUrl . $wsdlUri;
-		
-		$this->_soapClient = new \SoapClient($this->_wsdlUrl, array('trace' => 1, 'cache_wsdl' => WSDL_CACHE_NONE));
+
+    $opts = array(
+      'trace' => 1, // enables tracing of requests so faults can be backtraced
+      'exceptions' => 1, // SOAP errors throw exceptions of type SoapFault
+      'connection_timeout' => 10, // defines timeout for connection to SOAP service
+      'cache_wsdl' => WSDL_CACHE_NONE // Do NOT cache WSDL in case of updates to API
+    );
+
+		try {
+      $this->_soapClient = new \SoapClient($this->_wsdlUrl, $opts);
+    } catch (Exception $e) {
+      // SoapFault Exception
+      //die("Connection to ShipTime failed.");
+    }
 	}
-	
+
 	public function getLastReq() {
 		return $this->_soapClient->__getLastRequest();
 	}
@@ -52,18 +64,18 @@ abstract class ApiClientBase
 		// a <Response> except for getLocation, which uses neither
 		if ($method !== 'getLocation') {
 			$soapReq = array(array('Key' => $key, 'Request' => get_object_vars($req)));
-		
-			$soapResp = $this->_soapClient->__soapCall($method, $soapReq)->Response; 
+
+			$soapResp = $this->_soapClient->__soapCall($method, $soapReq)->Response;
 			//$this->storeSessionId();
 		} else {
 			$soapReq = array(array_merge(array('Key' => $key), get_object_vars($req)));
-			
+
 			$soapResp = $this->_soapClient->__soapCall($method, $soapReq);
 		}
-		
+
 		return $soapResp;
 	}
-	
+
 	protected function populateObject(&$source, &$target)
 	{
 		$props = get_object_vars($target);
@@ -75,9 +87,9 @@ abstract class ApiClientBase
 				{
 					$targetArr =& $target->{$k};
 					$targetArrItem = $targetArr[0];
-				
+
 					$targetArr = array();
-					
+
 					if (is_array($source->{$k}))
 					{
 						$sourceArr =& $source->{$k};
@@ -85,7 +97,7 @@ abstract class ApiClientBase
 					else
 					{
 						$sourceArr =& current(get_object_vars($source->{$k}));
-						
+
 						if (!is_array($sourceArr))
 						{
 							if (is_object($sourceArr) && count(get_object_vars($sourceArr)) > 0)
@@ -102,7 +114,7 @@ abstract class ApiClientBase
 							}
 						}
 					}
-					
+
 					// handle both arrays of objects...
 					if (is_object($targetArrItem))
 					{
@@ -139,7 +151,7 @@ abstract class ApiClientBase
 			}
 		}
 	}
-	
+
 	private function storeSessionId()
 	{
 		if (array_key_exists('JSESSIONID', $this->_soapClient->_cookies))
@@ -159,7 +171,7 @@ class EmergeitApiRequest
 class EmergeitApiResponse
 {
 	public $Messages = null;
-	
+
 	public function __construct()
 	{
 		$this->Messages = array(new Message());
