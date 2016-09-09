@@ -653,7 +653,7 @@ class WC_Order_ShipTime {
 				ob_start();
 				echo $msg;
 			} else {
-				$msg = "Connection to ShipTime has failed. Please try again in a moment.";
+				$msg = '<div class="error"><p>Connection to ShipTime has failed. Please try again in a moment.</p></div>';
 				ob_start();
 				echo $msg;
 			}
@@ -707,7 +707,7 @@ class WC_Order_ShipTime {
 				ob_start();
 				echo $msg;
 			} else {
-				$msg = "Connection to ShipTime has failed. Please try again in a moment.";
+				$msg = '<div class="error"><p>Connection to ShipTime has failed. Please try again in a moment.</p></div>';
 				ob_start();
 				echo $msg;
 			}
@@ -948,7 +948,7 @@ class WC_Order_ShipTime {
 			}
 
 		} else {
-			$msg = "Connection to ShipTime has failed. Please try again in a moment.";
+			$msg = '<div class="error"><p>Connection to ShipTime has failed. Please try again in a moment.</p></div>';
 			ob_start();
 			echo $msg;
 		}

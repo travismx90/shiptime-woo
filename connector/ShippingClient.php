@@ -7,8 +7,8 @@ require_once('types.php');
 
 class ShippingClient extends ApiClientBase
 {
-	//private $_defaultBaseUrl = 'http://ship.emergeit.com/api';
-	private $_defaultBaseUrl = 'http://sandbox.shiptime.com/api';
+	private $_defaultBaseUrl = 'http://ship.emergeit.com/api';
+	//private $_defaultBaseUrl = 'http://sandbox.shiptime.com/api';
 
 	public function __construct($encUsername, $encPassword, $baseUrl = null)
 	{
