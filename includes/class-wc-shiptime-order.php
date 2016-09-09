@@ -43,8 +43,8 @@ class WC_Order_ShipTime {
 			add_action( 'add_meta_boxes', array( $this, 'add_shiptime_metabox' ), 15 );
 		}
 
-		// Add shipment tracking information to customer email
-        //add_action( 'woocommerce_email_order_meta', array( $this, 'shiptime_order_email'), 20 );
+    // Add shipment tracking information to customer email
+    //add_action( 'woocommerce_email_order_meta', array( $this, 'shiptime_order_email'), 20 );
 
 		if ( isset( $_GET['recalc'] ) && (int)$_GET['recalc'] == 1 ) {
 			add_action( 'init', array( $this, 'recalc' ), 15 );
@@ -635,7 +635,7 @@ class WC_Order_ShipTime {
 			$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
 			$req = new emergeit\TrackShipmentRequest();
 			$req->ShipId = $shiptime_data->emergeit_id;
-			
+
 			if (is_object($this->_shippingClient->getSoapClient())) {
 				$resp = $this->_shippingClient->trackShipment($req);
 
@@ -709,7 +709,7 @@ class WC_Order_ShipTime {
 			} else {
 				$msg = "Connection to ShipTime has failed. Please try again in a moment.";
 				ob_start();
-				echo $msg;				
+				echo $msg;
 			}
 		}
 	}
