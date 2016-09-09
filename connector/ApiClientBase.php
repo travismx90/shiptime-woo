@@ -31,9 +31,11 @@ abstract class ApiClientBase
 
 		try {
       $this->_soapClient = new \SoapClient($this->_wsdlUrl, $opts);
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
       // SoapFault Exception
       //die("Connection to ShipTime failed.");
+      // Handle more gracefully with admin message when getSoapClient() == null
+      // "Connection to ShipTime has failed. Please try again in a moment."
     }
 	}
 
@@ -52,6 +54,10 @@ abstract class ApiClientBase
 	public function getFuncs() {
 		return $this->_soapClient->__getFunctions();
 	}
+
+  public function getSoapClient() {
+    return $this->_soapClient;
+  }
 
 	protected function apiRequest($method, EmergeitApiRequest $req)
 	{
