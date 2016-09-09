@@ -454,7 +454,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
           $shipRates = unserialize($cached_response);
         } else {
           // New API call
-          if (is_object($this->ratingClient->getSoapClient())) {
+          if ($this->ratingClient->isConnected()) {
             $shipRates = $this->ratingClient->getRates($req);
           }
 

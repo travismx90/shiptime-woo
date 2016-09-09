@@ -636,7 +636,7 @@ class WC_Order_ShipTime {
 			$req = new emergeit\TrackShipmentRequest();
 			$req->ShipId = $shiptime_data->emergeit_id;
 
-			if (is_object($this->_shippingClient->getSoapClient())) {
+			if ($this->_shippingClient->isConnected()) {
 				$resp = $this->_shippingClient->trackShipment($req);
 
 				// Show notice
@@ -672,7 +672,7 @@ class WC_Order_ShipTime {
 			$req = new emergeit\CancelShipmentRequest();
 			$req->ShipId = $shiptime_data->emergeit_id;
 
-			if (is_object($this->_shippingClient->getSoapClient())) {
+			if ($this->_shippingClient->isConnected()) {
 				$resp = $this->_shippingClient->cancelShipment($req);
 
 				$wpdb->update(
@@ -791,7 +791,7 @@ class WC_Order_ShipTime {
 		$loc->CountryCode = $ship_addr['country'];
 		$loc->PostalCode = $ship_addr['postcode'];
 		try {
-			if (is_object($this->_ratingClient->getSoapClient())) {
+			if ($this->_ratingClient->isConnected()) {
 				$api_resp = $this->_ratingClient->getLocation($loc);
 				if (is_object($api_resp)) {
 					$api_city = $api_resp->Location->city;
@@ -882,7 +882,7 @@ class WC_Order_ShipTime {
 		}
 
 
-		if (is_object($this->_shippingClient->getSoapClient())) {
+		if ($this->_shippingClient->isConnected()) {
 
 			$resp = $this->_shippingClient->placeShipment($req);
 
@@ -1281,7 +1281,7 @@ class WC_Order_ShipTime {
 				unset($req->CustomsInvoice);
 			}
 
-			if (is_object($this->_ratingClient->getSoapClient())) {
+			if ($this->_ratingClient->isConnected()) {
 				// New API call
 				$shipRates = $this->_ratingClient->getRates($req);
 
