@@ -43,8 +43,8 @@ class WC_Order_ShipTime {
 			add_action( 'add_meta_boxes', array( $this, 'add_shiptime_metabox' ), 15 );
 		}
 
-    // Add shipment tracking information to customer email
-    //add_action( 'woocommerce_email_order_meta', array( $this, 'shiptime_order_email'), 20 );
+		// Add shipment tracking information to customer email
+		//add_action( 'woocommerce_email_order_meta', array( $this, 'shiptime_order_email'), 20 );
 
 		if ( isset( $_GET['recalc'] ) && (int)$_GET['recalc'] == 1 ) {
 			add_action( 'init', array( $this, 'recalc' ), 15 );
@@ -146,33 +146,35 @@ class WC_Order_ShipTime {
 		if (!isset($_GET['post'])) return;
 		global $wpdb;
 
-		$oid = trim($_GET['post']);
+		if (isset($_GET['post']) && is_numeric($_GET['post'])) {
+			$oid = trim($_GET['post']);
 
-		$this->weight_uom = strtoupper(get_option( 'woocommerce_weight_unit' ));
-		$this->dim_uom = strtoupper(get_option( 'woocommerce_dimension_unit' ));
-		$this->shipping_meta = array();
-		$this->shiptime_data = array();
+			$this->weight_uom = strtoupper(get_option( 'woocommerce_weight_unit' ));
+			$this->dim_uom = strtoupper(get_option( 'woocommerce_dimension_unit' ));
+			$this->shipping_meta = array();
+			$this->shiptime_data = array();
 
-		$shiptime_settings = get_option('woocommerce_shiptime_settings');
-		if ($shiptime_settings && array_key_exists('services', $shiptime_settings)) {
-			foreach ($shiptime_settings['services'] as $serviceId => $data) {
-				if ($data['enabled'] == 'on') {
-					if ($data['intl'] == '1') {
-						$this->shiptime_intl[$data['name']] = $serviceId;
-					} else {
-						$this->shiptime_domestic[$data['name']] = $serviceId;
+			$shiptime_settings = get_option('woocommerce_shiptime_settings');
+			if ($shiptime_settings && array_key_exists('services', $shiptime_settings)) {
+				foreach ($shiptime_settings['services'] as $serviceId => $data) {
+					if ($data['enabled'] == 'on') {
+						if ($data['intl'] == '1') {
+							$this->shiptime_intl[$data['name']] = $serviceId;
+						} else {
+							$this->shiptime_domestic[$data['name']] = $serviceId;
+						}
 					}
 				}
 			}
-		}
-		$this->all_services = array_merge($this->shiptime_domestic,$this->shiptime_intl);
+			$this->all_services = array_merge($this->shiptime_domestic,$this->shiptime_intl);
 
-		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
-		if (is_object($shiptime_auth)) {
-			$encUser = $shiptime_auth->username;
-			$encPass = $shiptime_auth->password;
-			$this->_ratingClient = new emergeit\RatingClient($encUser, $encPass);
-			$this->_shippingClient = new emergeit\ShippingClient($encUser, $encPass);
+			$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
+			if (is_object($shiptime_auth)) {
+				$encUser = $shiptime_auth->username;
+				$encPass = $shiptime_auth->password;
+				$this->_ratingClient = new emergeit\RatingClient($encUser, $encPass);
+				$this->_shippingClient = new emergeit\ShippingClient($encUser, $encPass);
+			}
 		}
 	}
 
