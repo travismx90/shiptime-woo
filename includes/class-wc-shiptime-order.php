@@ -671,7 +671,7 @@ class WC_Order_ShipTime {
 					$msg = '<div class="error"><p>';
 					$msg .= 'Unable to track shipment.';
 					foreach ($resp->Messages as $m) {
-						$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r($m->Text, true)."</pre>";
+						$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r(htmlentities($m->Text), true)."</pre>";
 					}
 					$msg .= '</p></div>';
 				}
@@ -725,7 +725,7 @@ class WC_Order_ShipTime {
 					$msg = '<div class="error"><p>';
 					$msg .= 'Unable to cancel shipment.';
 					foreach ($resp->Messages as $m) {
-						$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r($m->Text, true)."</pre>";
+						$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r(htmlentities($m->Text), true)."</pre>";
 					}
 					$msg .= '</p></div>';
 				}
@@ -843,11 +843,11 @@ class WC_Order_ShipTime {
 		foreach ($shiptime_pkgs as $pkg) {
 			$item = new emergeit\LineItem();
 			$item->Length->UnitsType = 'IN';
-			$item->Length->Value = woocommerce_get_dimension($pkg['length'], 'in');
+			$item->Length->Value = ceil(woocommerce_get_dimension($pkg['length'], 'in'));
 			$item->Width->UnitsType = 'IN';
-			$item->Width->Value = woocommerce_get_dimension($pkg['width'], 'in');
+			$item->Width->Value = ceil(woocommerce_get_dimension($pkg['width'], 'in'));
 			$item->Height->UnitsType = 'IN';
-			$item->Height->Value = woocommerce_get_dimension($pkg['height'], 'in');
+			$item->Height->Value = ceil(woocommerce_get_dimension($pkg['height'], 'in'));
 			$item->Weight->UnitsType = 'LB';
 			// TODO: Support packages < 1 LB
 			$pkg_weight = woocommerce_get_weight($pkg['weight'], 'lbs');
@@ -965,7 +965,7 @@ class WC_Order_ShipTime {
 				$msg = '<div class="error"><p>';
 				$msg .= "Unable to create shipment.";
 				foreach ($resp->Messages as $m) {
-					$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r($m->Text, true)."</pre>";
+					$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r(htmlentities($m->Text), true)."</pre>";
 				}
 				$msg .= '</p></div>';
 				ob_start();
@@ -1330,7 +1330,7 @@ class WC_Order_ShipTime {
 				} else {
 					$msg = "Unable to determine shipping rates.";
 					foreach ($shipRates->Messages as $m) {
-						$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r($m->Text, true)."</pre>";
+						$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r(htmlentities($m->Text), true)."</pre>";
 					}
 					$err = true;
 				}
