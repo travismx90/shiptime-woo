@@ -1,4 +1,5 @@
 <?php require_once(dirname(__FILE__).'/../connector/SignupClient.php'); ?>
+<?php require_once(dirname(__FILE__).'/../includes/shipping-service.php'); ?>
 <style> .form-table td { padding-top: 0 !important; padding-bottom: 0 !important; }</style>
 <tr valign="top" id="service_options">
 	<td class="forminp" colspan="2" style="padding-left:0px">
@@ -24,6 +25,7 @@
 				<?php
 					global $wpdb;
 					$shipping_services = array();
+					$shiptime_carriers = array();
 					$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 					$encUser = $shiptime_auth->username;
 					$encPass = $shiptime_auth->password;
@@ -34,65 +36,57 @@
 					$req->Credentials->EncryptedUsername = $encUser;
 					$resp = $signupClient->getServices($req);
 					foreach ($resp->ServiceOptions as $serviceOption) {
-						$shipping_services[$serviceOption->ServiceId] = array(
-							'CarrierId' => $serviceOption->CarrierId,
-							'CarrierName' => $serviceOption->CarrierName,
-							'ServiceName' => $serviceOption->ServiceName,
-							'ServiceType' => $serviceOption->ServiceType
-						);
+						$skip = false;
+						foreach ($shipping_services as $serviceId => $data) {
+							if ($serviceOption->CarrierName == $data['CarrierName'] && $serviceOption->ServiceName == $data['ServiceName']) {
+								$skip = true;
+							}
+						}
+						if (!$skip) {
+							$shipping_services[$serviceOption->ServiceId] = array(
+								'CarrierId' => $serviceOption->CarrierId,
+								'CarrierName' => $serviceOption->CarrierName,
+								'ServiceName' => $serviceOption->ServiceName,
+								'ServiceType' => $serviceOption->ServiceType
+							);
+						}
 					}
 					$shipping_services = sortServices($shipping_services);
 
 					$this->available_services = array();
-					//echo '<pre>'.print_r($shipping_services,true).'</pre>';die();
 					foreach ($shipping_services as $service_id => $data) {
-						$this->available_services[$service_id] = $data['ServiceName'];
+						$this->available_services[] = new emergeit\ShippingService($service_id,$data['ServiceName'],$data['CarrierId'],$data['CarrierName'],$shiptime_auth->country);
 					}
-
-          // TODO: Remove hard-coded values
-					$this->intl_services = array(
-						'DHL INTL EXPRESS 10:30',
-				    'DHL INTL EXPRESS 12:00',
-				    'DHL INTL EXPRESS WORLDWIDE',
-						'FedEx International First',
-            'FedEx International Priority',
-            'FedEx International Economy',
-            'Purolator Express U.S.',
-            'Purolator Express Pack U.S.',
-            'Purolator Express Pack International',
-            'Purolator Ground U.S.',
-            'USPS Priority Mail International',
-            'USPS Express Mail International'
-					);
 
 					$shiptime_settings = get_option('woocommerce_shiptime_settings');
 
-					foreach ( $this->available_services as $serviceId => $serviceName) {
-						$intl = false;
-						$name = strpos($serviceName, $shipping_services[$serviceId]['CarrierName']) !== false ? $serviceName : $shipping_services[$serviceId]['CarrierName'] . " " . $serviceName;
-						if (in_array($name, $this->intl_services)) { $intl = true; } ?>
-						<tr<?php if ($intl) echo " class='intl'"; ?> style='height:40px'>
-							<td>
-								<input type="hidden" name="services[<?php echo $serviceId; ?>][name]" value="<?php echo $name; ?>" />
-								<input type="hidden" name="services[<?php echo $serviceId; ?>][intl]" value="<?php echo $intl ? 1 : 0; ?>" />
-								<?php echo '<strong>'.$serviceName.'</strong>'; ?>
-							</td>
-							<td>
-								<?php echo $shipping_services[$serviceId]['CarrierName']; ?>
-							</td>
-							<td class="check-column">
-								<label>
-									<input type="checkbox" name="services[<?php echo $serviceId; ?>][enabled]" <?php checked( (isset($this->services[$serviceId]['enabled']) || $shiptime_settings === false ), true ); ?> />
-								</label>
-							</td>
-							<td>
-								<?php echo get_woocommerce_currency_symbol(); ?><input type="text" name="services[<?php echo $serviceId; ?>][markup_fixed]" placeholder="N/A" value="<?php echo isset( $this->services[$serviceId]['markup_fixed'] ) ? $this->services[$serviceId]['markup_fixed'] : ''; ?>" size="4" />
-							</td>
-							<td>
-								<input type="text" name="services[<?php echo $serviceId; ?>][markup_percentage]" placeholder="N/A" value="<?php echo isset( $this->services[$serviceId]['markup_percentage'] ) ? $this->services[$serviceId]['markup_percentage'] : ''; ?>" size="4" />%
-							</td>
-						</tr>
-						<?php
+					foreach ( $this->available_services as $service) {
+						if ($service->isValid()) {
+							$intl = false;
+							if (!$service->isDomestic()) { $intl = true; } ?>
+							<tr<?php if ($intl) echo " class='intl'"; ?> style='height:40px'>
+								<td>
+									<input type="hidden" name="services[<?php echo $service->getId(); ?>][name]" value="<?php echo $service->getFullName(); ?>" />
+									<input type="hidden" name="services[<?php echo $service->getId(); ?>][intl]" value="<?php echo $intl ? 1 : 0; ?>" />
+									<?php echo '<strong>'.$service->getName().'</strong>'; ?>
+								</td>
+								<td>
+									<?php echo $shipping_services[$service->getId()]['CarrierName']; ?>
+								</td>
+								<td class="check-column">
+									<label>
+										<input type="checkbox" name="services[<?php echo $service->getId(); ?>][enabled]" <?php checked( (isset($this->services[$service->getId()]['enabled']) || $shiptime_settings === false ), true ); ?> />
+									</label>
+								</td>
+								<td>
+									<?php echo get_woocommerce_currency_symbol(); ?><input type="text" name="services[<?php echo $service->getId(); ?>][markup_fixed]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getId()]['markup_fixed'] ) ? $this->services[$service->getId()]['markup_fixed'] : ''; ?>" size="4" />
+								</td>
+								<td>
+									<input type="text" name="services[<?php echo $service->getId(); ?>][markup_percentage]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getId()]['markup_percentage'] ) ? $this->services[$service->getId()]['markup_percentage'] : ''; ?>" size="4" />%
+								</td>
+							</tr>
+							<?php
+						}
 					}
 				?>
 			</tbody>

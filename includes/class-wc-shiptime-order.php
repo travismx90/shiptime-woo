@@ -9,32 +9,38 @@
 */
 require_once(dirname(__FILE__).'/../connector/RatingClient.php');
 require_once(dirname(__FILE__).'/../connector/ShippingClient.php');
+require_once(dirname(__FILE__).'/../connector/SignupClient.php');
+require_once(dirname(__FILE__).'/../connector/CurrencyUtil.php');
 
 class WC_Order_ShipTime {
 
+	// TODO: Add carriers here as they are added to the plugin
 	const FEDEX_TRACKING = "https://www.fedex.com/Tracking?action=track&tracknumbers=";
 	const CANPAR_TRACKING = "https://www.canpar.com/en/track/TrackingAction.do?locale=en&type=0&shipper_num=42091720&reference=";
+	const CANPOST_TRACKING = "https://www.canadapost.ca/cpotools/apps/track/personal/findByTrackNumber?execution=e1s1&trackNumbers=";
 	const PURO_TRACKING = "https://eshiponline.purolator.com/SHIPONLINE/Public/Track/TrackingDetails.aspx?pin=";
 	const DHL_TRACKING = "http://www.dhl.com/content/g0/en/express/tracking.shtml?AWB=";
 	const DICOM_TRACKING = "https://www.dicom.com/en/dicomexpress/tracking/load-tracking/";
 	const LOOMIS_TRACKING = "http://www.loomisexpress.com/ca/wfTrackingStatus.aspx?PieceNumber=";
+	
+	private $shiptime_carriers = array();
+	private $carrier_list = array(
+		'FedEx' => FEDEX_TRACKING,
+		'DHL INTL' => DHL_TRACKING,
+		'Canpar' => CANPAR_TRACKING,
+		'Canada Post' => CANPOST_TRACKING,
+		'Purolator' => PURO_TRACKING,
+		'Dicom' => DICOM_TRACKING,
+		'Loomis' => LOOMIS_TRACKING
+	);
 
 	private $shiptime_domestic = array();
 	private $shiptime_intl = array();
 	private $all_services = null;
 
-	// TODO: Removed hard-coded values
-	private $shiptime_carriers = array(
-		'FedEx' => '7',
-		'Canpar' => '14',
-		'Loomis' => '105',
-		'Purolator' => '31',
-		'Dicom' => '39',
-		'DHL INTL' => '10'
-	);
-
 	private $_ratingClient = null;
 	private $_shippingClient = null;
+	private $_signupClient = null;
 
 	public function __construct() {
 		$this->wc_order_shiptime_init();
@@ -154,6 +160,7 @@ class WC_Order_ShipTime {
 			$this->shipping_meta = array();
 			$this->shiptime_data = array();
 
+			// Set ServiceName => ServiceId pairs
 			$shiptime_settings = get_option('woocommerce_shiptime_settings');
 			if ($shiptime_settings && array_key_exists('services', $shiptime_settings)) {
 				foreach ($shiptime_settings['services'] as $serviceId => $data) {
@@ -174,6 +181,19 @@ class WC_Order_ShipTime {
 				$encPass = $shiptime_auth->password;
 				$this->_ratingClient = new emergeit\RatingClient($encUser, $encPass);
 				$this->_shippingClient = new emergeit\ShippingClient($encUser, $encPass);
+				$this->_signupCLient = new emergeit\SignupClient();
+
+				// Set CarrierName => CarrierId pairs
+				$req = new emergeit\GetServicesRequest();
+				$req->IntegrationID = "85566cfb-9d0e-421b-bc78-649a1711a3ea";
+				$req->Credentials->EncryptedPassword = $encPass;
+				$req->Credentials->EncryptedUsername = $encUser;
+				$resp = $this->_signupCLient->getServices($req);
+				foreach ($resp->ServiceOptions as $serviceOption) {
+					if (array_key_exists($serviceOption->CarrierName, $this->carrier_list)) {
+						$this->shiptime_carriers[$serviceOption->CarrierName] = $serviceOption->CarrierId;
+					}
+				}
 			}
 		}
 	}
@@ -520,21 +540,19 @@ class WC_Order_ShipTime {
 						//echo 'Weight: '.$pkgs[$i]['Weight'].' '.$this->weight_uom.'<br>';
 						//echo 'Dimensions: '.$pkgs[$i]['Length'].' X '.$pkgs[$i]['Width'].' X '.$pkgs[$i]['Height'].' '.$this->dim_uom.'<br>';
 
-						if (stripos($this->shiptime_data->shipping_service, 'FedEx') !== false) {
-							echo "<a target='_new' href='" . self::FEDEX_TRACKING . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
-						} elseif (stripos($this->shiptime_data->shipping_service, 'Canpar') !== false) {
-							echo "<a target='_new' href='" . self::CANPAR_TRACKING . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
-						} elseif (stripos($this->shiptime_data->shipping_service, 'Purolator') !== false) {
-							echo "<a target='_new' href='" . self::PURO_TRACKING . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
-						} elseif (stripos($this->shiptime_data->shipping_service, 'DHL') !== false) {
-							echo "<a target='_new' href='" . self::DHL_TRACKING . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
-						} elseif (stripos($this->shiptime_data->shipping_service, 'Dicom') !== false) {
-							echo "<a target='_new' href='" . self::DICOM_TRACKING . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
-						} elseif (stripos($this->shiptime_data->shipping_service, 'Loomis') !== false) {
-							echo "<a target='_new' href='" . self::LOOMIS_TRACKING . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
-						} else {
-							echo "<a target='_new' href='" . self::FEDEX_TRACKING . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
+						$trackURL = '';
+
+						foreach ($this->carrier_list as $carrierName => $carrierUrl) {
+							if (stripos($this->shiptime_data->shipping_service, $carrierName) !== false) {
+								$trackURL = "<a target='_new' href='" . constant("self::$carrierUrl") . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
+								break;
+							}
 						}
+
+						if (empty($trackURL)) {
+							$trackURL = "<a target='_new' href='#" . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
+						}
+						echo $trackURL;
 					}
 				}
 				?>
@@ -562,6 +580,11 @@ class WC_Order_ShipTime {
 		if (array_key_exists($k, $rate_info)) {
 			echo $rate_info[$k];
 		}
+
+		if (get_woocommerce_currency() != 'CAD') {
+			echo "<br><em>Totals displayed in CAD</em><br>";
+			echo "Total (".get_woocommerce_currency()."): ".get_woocommerce_currency_symbol().emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$rate_info['total']);
+		}		
 	}
 
 	function shiptime_rate_details($quote) {
@@ -895,41 +918,41 @@ class WC_Order_ShipTime {
 				$pkgs = array();
 				for ($i=1; $i<=$c; $i++) {
 				  $pkgs[] = array(
-					  'weight' => sanitize_text_field($_GET["parcel_weight_{$i}"]),
-					  'length' => sanitize_text_field($_GET["parcel_length_{$i}"]),
-					  'width' => sanitize_text_field($_GET["parcel_width_{$i}"]),
-					  'height' => sanitize_text_field($_GET["parcel_height_{$i}"])
+						'weight' => sanitize_text_field($_GET["parcel_weight_{$i}"]),
+						'length' => sanitize_text_field($_GET["parcel_length_{$i}"]),
+						'width' => sanitize_text_field($_GET["parcel_width_{$i}"]),
+						'height' => sanitize_text_field($_GET["parcel_height_{$i}"])
 				  );
 				}
 				$wpdb->update(
 				  "{$wpdb->prefix}shiptime_order",
 				  array(
-					  'package_data' => serialize($pkgs),
-					  'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method']),
-					  'tracking_nums' => serialize($tracking_nums),
-					  'label_url' => $resp->LabelUrl,
-					  'invoice_url' => $resp->InvoiceUrl,
-					  'emergeit_id' => $resp->ShipId
+						'package_data' => serialize($pkgs),
+						'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method']),
+						'tracking_nums' => serialize($tracking_nums),
+						'label_url' => $resp->LabelUrl,
+						'invoice_url' => $resp->InvoiceUrl,
+						'emergeit_id' => $resp->ShipId
 				  ),
 				  array(
-					  'post_id' => $id
+						'post_id' => $id
 				  ),
 				  array(
-					  '%s',
-					  '%s',
-					  '%s',
-					  '%s',
-					  '%s',
-					  '%d'
+						'%s',
+						'%s',
+						'%s',
+						'%s',
+						'%s',
+						'%d'
 				  ),
 				  array(
-					  '%d'
+						'%d'
 				  )
 				);
 				$wpdb->update(
 				  "{$wpdb->prefix}woocommerce_order_items",
 				  array(
-					  'order_item_name' => sanitize_text_field($_GET['shiptime_shipping_method'])
+						'order_item_name' => sanitize_text_field($_GET['shiptime_shipping_method'])
 				  ),
 				  array( 'order_id' => $id, 'order_item_type' => 'shipping' ),
 				  array( '%s' ),
@@ -1295,6 +1318,10 @@ class WC_Order_ShipTime {
 							$rate_info = $this->shiptime_rate_details($shipRate);
 							if (array_key_exists('total', $rate_info) && array_key_exists('details', $rate_info)) {
 								$msg = '<strong>'.$l.'</strong><br>'.$rate_info['details'];
+								if (get_woocommerce_currency() != 'CAD') {
+									$msg .= "<br><em>Totals displayed in CAD</em><br>";
+									$msg .= "Total (".get_woocommerce_currency()."): ".get_woocommerce_currency_symbol().emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$rate_info['total']);
+								}	
 								$new_rate = $rate_info['total'];
 							}
 							break;
@@ -1319,8 +1346,13 @@ class WC_Order_ShipTime {
 				} else {
 					$current_rate = (float)preg_replace('/&.*?;/', '', strip_tags($current_rate));
 					$new_rate = (float)preg_replace('/&.*?;/', '', strip_tags($new_rate));
+					// API returns prices in CAD
+					// Convert, if necessary, to store currency
+					if (get_woocommerce_currency() != 'CAD') {
+						$new_rate = emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$new_rate);
+					}
 					if ($new_rate == $current_rate) {
-						$recalc = "<span style='padding:5px;display:block;background-color:#efefef;color:#444'>Shipping rate for this order recalculted to be the same as the rate your customer paid.</span>";
+						$recalc = "<span style='padding:5px;display:block;background-color:#efefef;color:#444'>Shipping rate for this order recalculated to be the same as the rate your customer paid.</span>";
 					} elseif ($new_rate > $current_rate) {
 						$recalc = "<span style='padding:5px;display:block;background-color:#f6e5e5;color:#A00'>Note: New shipping rate for this order is " . wc_price($new_rate) . ", which is " . wc_price($new_rate-$current_rate) . " more than the rate your customer paid.</span>";
 					} else {

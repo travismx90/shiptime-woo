@@ -55,13 +55,13 @@ abstract class ApiClientBase
 		return $this->_soapClient->__getFunctions();
 	}
 
-  public function getSoapClient() {
-    return $this->_soapClient;
-  }
+	public function getSoapClient() {
+		return $this->_soapClient;
+	}
 
-  public function isConnected() {
-    return is_object($this->getSoapClient());
-  }
+	public function isConnected() {
+		return is_object($this->getSoapClient());
+	}
 
 	protected function apiRequest($method, EmergeitApiRequest $req)
 	{

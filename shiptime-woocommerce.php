@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 // This plugin requires an active installation of WooCommerce
 if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
 
-  class ShipTime_WooCommerce {
+	class ShipTime_WooCommerce {
 
 		public function __construct() {
 			// Activation hooks
@@ -49,79 +49,79 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 		// Check for ShipTime database tables
 		public function shiptime_database_check() {
-      global $wpdb;
-      $charset_collate = $wpdb->get_charset_collate();
-      require_once(ABSPATH.'wp-admin/includes/upgrade.php');
+			global $wpdb;
+			$charset_collate = $wpdb->get_charset_collate();
+			require_once(ABSPATH.'wp-admin/includes/upgrade.php');
 
-      // Table: shiptime_login
-      $table_name = $wpdb->prefix . 'shiptime_login';
-      $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-        id mediumint(9) NOT NULL AUTO_INCREMENT,
-        username varchar(255) DEFAULT '' NOT NULL,
-        password varchar(255) DEFAULT '' NOT NULL,
-        first_name varchar(64) DEFAULT '' NOT NULL,
-        last_name varchar(64) DEFAULT '' NOT NULL,
-        email varchar(255) DEFAULT '' NOT NULL,
-        company varchar(127) DEFAULT '' NOT NULL,
-        address varchar(255) DEFAULT '' NOT NULL,
-        country varchar(64) DEFAULT '' NOT NULL,
-        city varchar(64) DEFAULT '' NOT NULL,
-        state varchar(64) DEFAULT '' NOT NULL,
-        zip varchar(20) DEFAULT '' NOT NULL,
-        phone varchar(20) DEFAULT '' NOT NULL,
-        lang varchar(20) DEFAULT '' NOT NULL,
-        UNIQUE KEY id (id)
-      ) $charset_collate;";
-      dbDelta( $sql );
+			// Table: shiptime_login
+			$table_name = $wpdb->prefix . 'shiptime_login';
+			$sql = "CREATE TABLE IF NOT EXISTS $table_name (
+				id mediumint(9) NOT NULL AUTO_INCREMENT,
+				username varchar(255) DEFAULT '' NOT NULL,
+				password varchar(255) DEFAULT '' NOT NULL,
+				first_name varchar(64) DEFAULT '' NOT NULL,
+				last_name varchar(64) DEFAULT '' NOT NULL,
+				email varchar(255) DEFAULT '' NOT NULL,
+				company varchar(127) DEFAULT '' NOT NULL,
+				address varchar(255) DEFAULT '' NOT NULL,
+				country varchar(64) DEFAULT '' NOT NULL,
+				city varchar(64) DEFAULT '' NOT NULL,
+				state varchar(64) DEFAULT '' NOT NULL,
+				zip varchar(20) DEFAULT '' NOT NULL,
+				phone varchar(20) DEFAULT '' NOT NULL,
+				lang varchar(20) DEFAULT '' NOT NULL,
+				UNIQUE KEY id (id)
+			) $charset_collate;";
+			dbDelta( $sql );
 
-      // Table: shiptime_order
-      $table_name = $wpdb->prefix . 'shiptime_order';
-      $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-        id mediumint(9) NOT NULL AUTO_INCREMENT,
-        post_id mediumint(9) NOT NULL,
-        package_data text NOT NULL,
-        shipping_service varchar(255) DEFAULT '' NOT NULL,
-        tracking_nums text NOT NULL,
-        label_url text NOT NULL,
-        invoice_url text NOT NULL,
-        emergeit_id varchar(255) DEFAULT '' NOT NULL,
-        box_codes text NOT NULL,
-        recalc text NOT NULL,
-        quoted_rate decimal(8,2) NOT NULL,
-        markup_rate decimal(8,2) NOT NULL,
-        recalc_rate decimal(8,2) NOT NULL,
-        taxes decimal(8,2) NOT NULL,
-        UNIQUE KEY id (id)
-      ) $charset_collate;";
-      dbDelta( $sql );
+			// Table: shiptime_order
+			$table_name = $wpdb->prefix . 'shiptime_order';
+			$sql = "CREATE TABLE IF NOT EXISTS $table_name (
+				id mediumint(9) NOT NULL AUTO_INCREMENT,
+				post_id mediumint(9) NOT NULL,
+				package_data text NOT NULL,
+				shipping_service varchar(255) DEFAULT '' NOT NULL,
+				tracking_nums text NOT NULL,
+				label_url text NOT NULL,
+				invoice_url text NOT NULL,
+				emergeit_id varchar(255) DEFAULT '' NOT NULL,
+				box_codes text NOT NULL,
+				recalc text NOT NULL,
+				quoted_rate decimal(8,2) NOT NULL,
+				markup_rate decimal(8,2) NOT NULL,
+				recalc_rate decimal(8,2) NOT NULL,
+				taxes decimal(8,2) NOT NULL,
+				UNIQUE KEY id (id)
+			) $charset_collate;";
+			dbDelta( $sql );
 
 			// Table: shiptime_quote
-      $table_name = $wpdb->prefix . 'shiptime_quote';
-      $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-        id mediumint(9) NOT NULL AUTO_INCREMENT,
-        order_id mediumint(9) NOT NULL,
-        cart_sessid varchar(255) DEFAULT '' NOT NULL,
-        shipping_method varchar(255) DEFAULT '' NOT NULL,
-        quote text NOT NULL,
-        packages text NOT NULL,
-        UNIQUE KEY id (id)
-      ) $charset_collate;";
-      dbDelta( $sql );
+			$table_name = $wpdb->prefix . 'shiptime_quote';
+			$sql = "CREATE TABLE IF NOT EXISTS $table_name (
+				id mediumint(9) NOT NULL AUTO_INCREMENT,
+				order_id mediumint(9) NOT NULL,
+				cart_sessid varchar(255) DEFAULT '' NOT NULL,
+				shipping_method varchar(255) DEFAULT '' NOT NULL,
+				quote text NOT NULL,
+				packages text NOT NULL,
+				UNIQUE KEY id (id)
+			) $charset_collate;";
+			dbDelta( $sql );
 
-      if (!$wpdb->query("SELECT * FROM wp_woocommerce_tax_rates WHERE tax_rate_name = 'ShipTime'")) {
-        // 0% tax for shipping (handled by ShipTime)
-        $shiptime_tax_rate = array(
-          'tax_rate_country'  => '',
-          'tax_rate_state'    => '',
-          'tax_rate'          => 0.00,
-          'tax_rate_name'     => 'ShipTime',
-          'tax_rate_priority' => 1,
-          'tax_rate_compound' => 0,
-          'tax_rate_shipping' => 1,
-          'tax_rate_order'    => 0,
-          'tax_rate_class'    => 'zero-rate'
-        );
-        WC_Tax::_insert_tax_rate( $shiptime_tax_rate );
+			if (!$wpdb->query("SELECT * FROM wp_woocommerce_tax_rates WHERE tax_rate_name = 'ShipTime'")) {
+				// 0% tax for shipping (handled by ShipTime)
+				$shiptime_tax_rate = array(
+					'tax_rate_country'  => '',
+					'tax_rate_state'    => '',
+					'tax_rate'          => 0.00,
+					'tax_rate_name'     => 'ShipTime',
+					'tax_rate_priority' => 1,
+					'tax_rate_compound' => 0,
+					'tax_rate_shipping' => 1,
+					'tax_rate_order'    => 0,
+					'tax_rate_class'    => 'zero-rate'
+				);
+				WC_Tax::_insert_tax_rate( $shiptime_tax_rate );
 			}
 
 			// Shipping Tax Class: Zero Rate
@@ -149,9 +149,13 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 		// Require all core files
 		public function shipping_init() {
+			// Packaging classes
 			require_once ('includes/box.php');
 			require_once ('includes/package.php');
 			require_once ('includes/shipment.php');
+			// Helper classes
+			require_once ('includes/shipping-service.php');
+			require_once ('connector/CurrencyUtil.php');
 			// Main class responsible for generating shipping rates
 			require_once ('includes/class-wc-shiptime-shipping.php');
 		}
@@ -189,78 +193,78 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 		// Change to Cart page
 		public function wc_shiptime_cart_css() {
 			// Widen cart totals div so each shipping ServiceName fits on a single line
-    		echo '<style>.woocommerce .cart-collaterals .cart_totals { width: 70%; }</style>';
+			echo '<style>.woocommerce .cart-collaterals .cart_totals { width: 70%; }</style>';
 		}
 
 		// Change to Cart page
 		public function wc_shiptime_cart_js() {
-    		// Add HTML below shipping rates
-    		wp_enqueue_script('shiptime-cart', plugins_url('js/wc-shiptime-cart-html.js', __FILE__), array('jquery'), null, true);
+			// Add HTML below shipping rates
+			wp_enqueue_script('shiptime-cart', plugins_url('js/wc-shiptime-cart-html.js', __FILE__), array('jquery'), null, true);
 		}
 
 		// Add product shipping fields necessary for int'l shipments
 		public function add_product_fields() {
-      echo '<p><strong>International Shipping</strong></p>';
+			echo '<p><strong>International Shipping</strong></p>';
 
-      // HS Code
-      woocommerce_wp_text_input(
-        array(
-          'id' => 'shiptime_hs_code',
-          'label' => 'HS Code',
-          'placeholder' => '2711.12',
-          'type' => 'text',
-          'desc_tip' => 'true',
-          'description' => 'Must be 6 or 10 digits, with or without periods.'
-        )
-      );
-      echo '<p><a href="https://www.canadapost.ca/cpotools/apps/wtz/business/findHsCode?execution=e1s1" target="_blank">HS Code Search</a></p>';
+			// HS Code
+			woocommerce_wp_text_input(
+				array(
+					'id' => 'shiptime_hs_code',
+					'label' => 'HS Code',
+					'placeholder' => '2711.12',
+					'type' => 'text',
+					'desc_tip' => 'true',
+					'description' => 'Must be 6 or 10 digits, with or without periods.'
+				)
+			);
+			echo '<p><a href="https://www.canadapost.ca/cpotools/apps/wtz/business/findHsCode?execution=e1s1" target="_blank">HS Code Search</a></p>';
 
-      // Country of Origin - Where product was manufactured
-      woocommerce_wp_select(
-        array(
-          'id' => 'shiptime_origin_country',
-          'label' => 'Country of Origin',
-          'class' => 'select',
-          'options' => array_merge(array('' => '-- Please Select --'),WC()->countries->get_allowed_countries())
-        )
-      );
+			// Country of Origin - Where product was manufactured
+			woocommerce_wp_select(
+				array(
+					'id' => 'shiptime_origin_country',
+					'label' => 'Country of Origin',
+					'class' => 'select',
+					'options' => array_merge(array('' => '-- Please Select --'),WC()->countries->get_allowed_countries())
+				)
+			);
 		}
 
 		// Save function
 		public function save_product_fields($post_id) {
 			// HS Code
-      $shiptime_hs_code = $_POST['shiptime_hs_code'];
-      if (!empty($shiptime_hs_code) && strlen($shiptime_hs_code) <= 20) {
-        update_post_meta($post_id, 'shiptime_hs_code', esc_attr($shiptime_hs_code));
-      }
-      else {
-        delete_post_meta($post_id, 'shiptime_hs_code');
-      }
+			$shiptime_hs_code = $_POST['shiptime_hs_code'];
+			if (!empty($shiptime_hs_code) && strlen($shiptime_hs_code) <= 20) {
+				update_post_meta($post_id, 'shiptime_hs_code', esc_attr($shiptime_hs_code));
+			}
+			else {
+				delete_post_meta($post_id, 'shiptime_hs_code');
+			}
 
-      // Origin Country
-      $shiptime_origin_country = $_POST['shiptime_origin_country'];
-      if (!empty($shiptime_origin_country) && strlen($shiptime_origin_country) <= 2) {
-        update_post_meta($post_id, 'shiptime_origin_country', esc_attr($shiptime_origin_country));
-      }
-      else {
-        delete_post_meta($post_id, 'shiptime_origin_country');
-      }
+			// Origin Country
+			$shiptime_origin_country = $_POST['shiptime_origin_country'];
+			if (!empty($shiptime_origin_country) && strlen($shiptime_origin_country) <= 2) {
+				update_post_meta($post_id, 'shiptime_origin_country', esc_attr($shiptime_origin_country));
+			}
+			else {
+				delete_post_meta($post_id, 'shiptime_origin_country');
+			}
 		}
 
 		// If plugin not configured, prompt user in WP admin
 		public function show_notices() {
-      if (get_transient('shiptime_signup_required')) {
-        echo '<div class="error">
-        <p>A ShipTime account is required to receive discounted shipping rates. <a href="'. admin_url( 'index.php?page=shiptime-signup' ) . '" target="_self"> Use Built-In Signup</a> to instantly integrate discounted shipping.</p>
-        </div>';
-      }
+			if (get_transient('shiptime_signup_required')) {
+				echo '<div class="error">
+				<p>A ShipTime account is required to receive discounted shipping rates. <a href="'. admin_url( 'index.php?page=shiptime-signup' ) . '" target="_self"> Use Built-In Signup</a> to instantly integrate discounted shipping.</p>
+				</div>';
+			}
 
-      if (get_transient('shiptime_signup_success')) {
-        echo '<div class="updated">
-        <p>You have successfully integrated discounted shipping with ShipTime. Go to <a target="_blank" href="http://shiptime.com">shiptime.com</a> to access your account directly.</p>
-        </div>';
-        delete_transient('shiptime_signup_success');
-      }
+			if (get_transient('shiptime_signup_success')) {
+				echo '<div class="updated">
+				<p>You have successfully integrated discounted shipping with ShipTime. Go to <a target="_blank" href="http://shiptime.com">shiptime.com</a> to access your account directly.</p>
+				</div>';
+				delete_transient('shiptime_signup_success');
+			}
 		}
 
 		// Load JQuery
@@ -279,7 +283,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	new ShipTime_WooCommerce(); // Instantiate main class
 
 } else {
-    echo '<div class="error">
-    <p>An installation of WooCommerce is required to use the ShipTime plugin.</p>
-    </div>';
+		echo '<div class="error">
+		<p>An installation of WooCommerce is required to use the ShipTime plugin.</p>
+		</div>';
 }
