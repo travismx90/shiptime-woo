@@ -100,6 +100,7 @@ class ShipmentBuilder {
 			}
 			$package->pack($item["length"], $item["width"], $item["height"], $item["weight"]);
 		}
+		$i=1;
 		foreach ($this->Packages as $package) {
 			foreach (array_reverse($boxs) as $b) {
 				if ($b->pack($package->getLength(), $package->getWidth(), $package->getHeight())) {
@@ -107,6 +108,7 @@ class ShipmentBuilder {
 					break;
 				}
 			}
+			$i++;
 		}
 		return $this->Packages;
 	}

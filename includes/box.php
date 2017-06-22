@@ -22,8 +22,6 @@ class Box {
 	public $DimUnit;
 	public $WeightUnit;
 
-	private $Valid = false;
-
 	public function __construct($c, $ol, $ow, $oh, $il, $iw, $ih, $w) {
 		$this->Code = $c;	
 
@@ -45,13 +43,6 @@ class Box {
 
 		$this->DimUnit = 'IN';
 		$this->WeightUnit = 'LB';
-	}
-
-	public function isValid($val=null) {
-		if ($val === null) {
-			return $this->Valid;
-		}
-		$this->Valid = (bool)$val;
 	}
 
 	public function getLength() {
@@ -112,23 +103,8 @@ class Box {
 		sort($dims);
 
 		if ($this->InnerLength >= $dims[2] && $this->InnerWidth >= $dims[1] && $this->InnerHeight >= $dims[0] && $this->getPackingVolume() >= $dims[0]*$dims[1]*$dims[2]) {
-			$this->isValid(true);
+			return true;
 		}
-
-		return $this->isValid();
-	}
-
-	public static function chooseBox($length, $width, $height, $boxes) {
-		$dims = array($length, $width, $height);
-		sort($dims);
-
-		// Find the smallest valid box
-		foreach (array_reverse($boxes) as $box) {
-			if ($box->isValid()) {
-				return $box;
-			}
-		}
-
 		return false;
 	}
 

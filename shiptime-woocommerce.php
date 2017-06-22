@@ -173,21 +173,26 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 			$cart_sessid = array_shift(array_keys($woocommerce->session->cart));
 			$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");
-			$woo_order = new WC_Order($order_id);
-			$shipping_method = trim(array_shift(explode('[', $woo_order->get_shipping_method())));
+			try {
+				$woo_order = new WC_Order($order_id);
+				$shipping_method = trim(array_shift(explode('[', $woo_order->get_shipping_method())));
 
-			// associate woo order id with cart session id
-			$wpdb->update(
-				"{$wpdb->prefix}shiptime_quote",
-				array(
-					'order_id' => $order_id,
-					'cart_sessid' => $cart_sessid,
-					'shipping_method' => $shipping_method
-				),
-				array( 'id' => $quote->id ),
-				array( '%d', '%s', '%s', '%s' ),
-				array( '%d' )
-			);
+				// associate woo order id with cart session id
+				$wpdb->update(
+					"{$wpdb->prefix}shiptime_quote",
+					array(
+						'order_id' => $order_id,
+						'cart_sessid' => $cart_sessid,
+						'shipping_method' => $shipping_method
+					),
+					array( 'id' => $quote->id ),
+					array( '%d', '%s', '%s', '%s' ),
+					array( '%d' )
+				);
+			} catch (Exception $e) {
+				// Something went wrong, this function only runs
+				// during woocommerce_checkout_order_processed action
+			}
 		}
 
 		// Change to Cart page

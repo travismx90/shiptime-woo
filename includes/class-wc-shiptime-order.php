@@ -43,40 +43,40 @@ class WC_Order_ShipTime {
 	private $_signupClient = null;
 
 	public function __construct() {
-		$this->wc_order_shiptime_init();
+		if ($this->wc_order_shiptime_init()) {
+			if ( is_admin() ) {
+				add_action( 'add_meta_boxes', array( $this, 'add_shiptime_metabox' ), 15 );
+			}
 
-		if ( is_admin() ) {
-			add_action( 'add_meta_boxes', array( $this, 'add_shiptime_metabox' ), 15 );
-		}
+			// Add shipment tracking information to customer email
+			//add_action( 'woocommerce_email_order_meta', array( $this, 'shiptime_order_email'), 20 );
 
-		// Add shipment tracking information to customer email
-		//add_action( 'woocommerce_email_order_meta', array( $this, 'shiptime_order_email'), 20 );
+			if ( isset( $_GET['recalc'] ) && (int)$_GET['recalc'] == 1 ) {
+				add_action( 'init', array( $this, 'recalc' ), 15 );
+			}
 
-		if ( isset( $_GET['recalc'] ) && (int)$_GET['recalc'] == 1 ) {
-			add_action( 'init', array( $this, 'recalc' ), 15 );
-		}
-
-		if ( isset( $_GET['shiptime_place_shipment'] ) ) {
-			add_action( 'init', array( $this, 'shiptime_place_shipment' ), 15 );
-		}
-		else if ( isset( $_GET['shiptime_cancel_shipment'] ) ) {
-			add_action( 'init', array( $this, 'shiptime_cancel_shipment' ), 15 );
-		}
-		else if ( isset( $_GET['shiptime_track_shipment'] ) ) {
-			add_action( 'admin_notices', array( $this, 'shiptime_track_shipment' ), 15 );
-			//add_action( 'init', array( $this, 'shiptime_track_shipment' ), 15 );
-		}
-		else if ( isset( $_GET['shiptime_box_selection'] ) ) {
-			add_action( 'init', array( $this, 'shiptime_box_selection' ), 15 );
-		}
-		else if ( isset( $_GET['shiptime_box_addition'] ) ) {
-			add_action( 'init', array( $this, 'shiptime_box_addition' ), 15 );
-		}
-		else if ( isset( $_GET['shiptime_pkg_addition'] ) ) {
-			add_action( 'init', array( $this, 'shiptime_pkg_addition' ), 15 );
-		}
-		else if ( isset( $_GET['shiptime_pkg_deletion'] ) ) {
-			add_action( 'init', array( $this, 'shiptime_pkg_deletion' ), 15 );
+			if ( isset( $_GET['shiptime_place_shipment'] ) ) {
+				add_action( 'init', array( $this, 'shiptime_place_shipment' ), 15 );
+			}
+			else if ( isset( $_GET['shiptime_cancel_shipment'] ) ) {
+				add_action( 'init', array( $this, 'shiptime_cancel_shipment' ), 15 );
+			}
+			else if ( isset( $_GET['shiptime_track_shipment'] ) ) {
+				add_action( 'admin_notices', array( $this, 'shiptime_track_shipment' ), 15 );
+				//add_action( 'init', array( $this, 'shiptime_track_shipment' ), 15 );
+			}
+			else if ( isset( $_GET['shiptime_box_selection'] ) ) {
+				add_action( 'init', array( $this, 'shiptime_box_selection' ), 15 );
+			}
+			else if ( isset( $_GET['shiptime_box_addition'] ) ) {
+				add_action( 'init', array( $this, 'shiptime_box_addition' ), 15 );
+			}
+			else if ( isset( $_GET['shiptime_pkg_addition'] ) ) {
+				add_action( 'init', array( $this, 'shiptime_pkg_addition' ), 15 );
+			}
+			else if ( isset( $_GET['shiptime_pkg_deletion'] ) ) {
+				add_action( 'init', array( $this, 'shiptime_pkg_deletion' ), 15 );
+			}
 		}
 	}
 
@@ -155,6 +155,10 @@ class WC_Order_ShipTime {
 		if (isset($_GET['post']) && is_numeric($_GET['post'])) {
 			$oid = trim($_GET['post']);
 
+			// Only display for Orders, not Products
+			$order = $this->get_wc_order($oid);
+			if ( !$order ) return;
+
 			$this->weight_uom = strtoupper(get_option( 'woocommerce_weight_unit' ));
 			$this->dim_uom = strtoupper(get_option( 'woocommerce_dimension_unit' ));
 			$this->shipping_meta = array();
@@ -195,6 +199,9 @@ class WC_Order_ShipTime {
 					}
 				}
 			}
+			return true;
+		} else {
+			return false;
 		}
 	}
 
@@ -748,234 +755,238 @@ class WC_Order_ShipTime {
 		$order = $this->get_wc_order($id);
 
 		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
-		$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
-		$shiptime_pkgs = unserialize($shiptime_data->package_data);
-		$ship_addr = $order->get_address('shipping');
-		$bill_addr = $order->get_address('billing');
+		if (isset($shiptime_auth) && !get_transient('shiptime_signup_required')) {
+			$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
+			$shiptime_pkgs = unserialize($shiptime_data->package_data);
+			$ship_addr = $order->get_address('shipping');
+			$bill_addr = $order->get_address('billing');
 
-		// Store data from form submit
-		$c=count($shiptime_pkgs);
-		$pkgs = array();
-		for ($i=1; $i<=$c; $i++) {
-			$pkgs[] = array(
-				'weight' => sanitize_text_field($_GET["parcel_weight_{$i}"]),
-				'length' => sanitize_text_field($_GET["parcel_length_{$i}"]),
-				'width' => sanitize_text_field($_GET["parcel_width_{$i}"]),
-				'height' => sanitize_text_field($_GET["parcel_height_{$i}"])
-			);
-		}
-		$wpdb->update(
-			"{$wpdb->prefix}shiptime_order",
-			array(
-				'package_data' => serialize($pkgs),
-				'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method'])
-			),
-			array( 'post_id' => $id ),
-			array(
-				'%s',
-				'%s'
-			),
-			array( '%d' )
-		);
-
-		$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
-		$shiptime_pkgs = unserialize($shiptime_data->package_data);
-
-		// Make placeShipment Request
-		$req = new emergeit\PlaceShipmentRequest();
-
-		foreach ($this->shiptime_carriers as $carrier => $cid) {
-			if (strpos($shiptime_data->shipping_service, $carrier) !== false) {
-				$req->CarrierId = $cid;
+			// Store data from form submit
+			$c=count($shiptime_pkgs);
+			$pkgs = array();
+			for ($i=1; $i<=$c; $i++) {
+				$pkgs[] = array(
+					'weight' => sanitize_text_field($_GET["parcel_weight_{$i}"]),
+					'length' => sanitize_text_field($_GET["parcel_length_{$i}"]),
+					'width' => sanitize_text_field($_GET["parcel_width_{$i}"]),
+					'height' => sanitize_text_field($_GET["parcel_height_{$i}"])
+				);
 			}
-		}
-		if ($order->shipping_country != $shiptime_auth->country) {
-			$req->ServiceId = $this->shiptime_intl[$shiptime_data->shipping_service];
-		} else {
-			$req->ServiceId = $this->shiptime_domestic[$shiptime_data->shipping_service];
-		}
+			$wpdb->update(
+				"{$wpdb->prefix}shiptime_order",
+				array(
+					'package_data' => serialize($pkgs),
+					'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method'])
+				),
+				array( 'post_id' => $id ),
+				array(
+					'%s',
+					'%s'
+				),
+				array( '%d' )
+			);
 
-		// Pull merchant info from ShipTime signup
-		$req->From->Attention = ucwords($shiptime_auth->first_name) . ' ' . ucwords($shiptime_auth->last_name);
-		$req->From->City = ucwords($shiptime_auth->city);
-		$req->From->Phone = $shiptime_auth->phone;
-		$req->From->CompanyName = $shiptime_auth->company;
-		$req->From->CountryCode = $shiptime_auth->country;
-		$req->From->Email = $shiptime_auth->email;
-		$req->From->PostalCode = $shiptime_auth->zip;
-		$req->From->Province = $shiptime_auth->state;
-		$req->From->StreetAddress = ucwords($shiptime_auth->address);
-		$req->From->Notify = false;
-		$req->From->Residential = false;
-		// Pull customer info from Woo order
-		$user_info = get_user_meta(absint($order->customer_user));
-		$req->To->Attention = ucwords($ship_addr['first_name'] . ' ' . $ship_addr['last_name']);
-		// Verify/Correct City based on CountryCode and PostalCode
-		$ship_city = ucwords($ship_addr['city']);
-		$loc = new emergeit\GetLocationRequest();
-		$loc->CountryCode = $ship_addr['country'];
-		$loc->PostalCode = $ship_addr['postcode'];
-		try {
-			if ($this->_ratingClient->isConnected()) {
-				$api_resp = $this->_ratingClient->getLocation($loc);
-				if (is_object($api_resp)) {
-					$api_city = $api_resp->Location->city;
-					if ($api_city != $ship_city) {
-						$ship_city = $api_city;
+			$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
+			$shiptime_pkgs = unserialize($shiptime_data->package_data);
+
+			// Make placeShipment Request
+			$req = new emergeit\PlaceShipmentRequest();
+
+			foreach ($this->shiptime_carriers as $carrier => $cid) {
+				if (strpos($shiptime_data->shipping_service, $carrier) !== false) {
+					$req->CarrierId = $cid;
+				}
+			}
+			if ($order->shipping_country != $shiptime_auth->country) {
+				$req->ServiceId = $this->shiptime_intl[$shiptime_data->shipping_service];
+			} else {
+				$req->ServiceId = $this->shiptime_domestic[$shiptime_data->shipping_service];
+			}
+
+			// Pull merchant info from ShipTime signup
+			$req->From->Attention = ucwords($shiptime_auth->first_name) . ' ' . ucwords($shiptime_auth->last_name);
+			$req->From->City = ucwords($shiptime_auth->city);
+			$req->From->Phone = $shiptime_auth->phone;
+			$req->From->CompanyName = $shiptime_auth->company;
+			$req->From->CountryCode = $shiptime_auth->country;
+			$req->From->Email = $shiptime_auth->email;
+			$req->From->PostalCode = $shiptime_auth->zip;
+			$req->From->Province = $shiptime_auth->state;
+			$req->From->StreetAddress = ucwords($shiptime_auth->address);
+			$req->From->Notify = false;
+			$req->From->Residential = false;
+			// Pull customer info from Woo order
+			$user_info = get_user_meta(absint($order->customer_user));
+			$req->To->Attention = ucwords($ship_addr['first_name'] . ' ' . $ship_addr['last_name']);
+			// Verify/Correct City based on CountryCode and PostalCode
+			$ship_city = ucwords($ship_addr['city']);
+			$loc = new emergeit\GetLocationRequest();
+			$loc->CountryCode = $ship_addr['country'];
+			$loc->PostalCode = $ship_addr['postcode'];
+			try {
+				if ($this->_ratingClient->isConnected()) {
+					$api_resp = $this->_ratingClient->getLocation($loc);
+					if (is_object($api_resp)) {
+						$api_city = $api_resp->Location->city;
+						if ($api_city != $ship_city) {
+							$ship_city = $api_city;
+						}
 					}
 				}
+			} catch (Exception $e) {
+				// Returns SoapFault Exception on Failure
 			}
-		} catch (Exception $e) {
-			// Returns SoapFault Exception on Failure
-		}
-		$req->To->City = $ship_city;
-		$req->To->Phone = $bill_addr['phone'];
-		$req->To->CompanyName = !empty($ship_addr['company']) ? $ship_addr['company'] : 'NA';
-		$req->To->CountryCode = $ship_addr['country'];
-		$req->To->Email = $bill_addr['email'];
-		$req->To->PostalCode = $ship_addr['postcode'];
-		$req->To->Province = $ship_addr['state'];
-		$req->To->StreetAddress = ucwords($ship_addr['address_1']);
-		$req->To->StreetAddress2 = ucwords($ship_addr['address_2']);
-		$req->To->Notify = false;
-		$req->To->Residential = false;
-		$req->PackageType = 'PACKAGE';
-		foreach ($shiptime_pkgs as $pkg) {
-			$item = new emergeit\LineItem();
-			$item->Length->UnitsType = 'IN';
-			$item->Length->Value = ceil(woocommerce_get_dimension($pkg['length'], 'in'));
-			$item->Width->UnitsType = 'IN';
-			$item->Width->Value = ceil(woocommerce_get_dimension($pkg['width'], 'in'));
-			$item->Height->UnitsType = 'IN';
-			$item->Height->Value = ceil(woocommerce_get_dimension($pkg['height'], 'in'));
-			$item->Weight->UnitsType = 'LB';
-			// TODO: Support packages < 1 LB
-			$pkg_weight = woocommerce_get_weight($pkg['weight'], 'lbs');
-			$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
+			$req->To->City = $ship_city;
+			$req->To->Phone = $bill_addr['phone'];
+			$req->To->CompanyName = !empty($ship_addr['company']) ? $ship_addr['company'] : 'NA';
+			$req->To->CountryCode = $ship_addr['country'];
+			$req->To->Email = $bill_addr['email'];
+			$req->To->PostalCode = $ship_addr['postcode'];
+			$req->To->Province = $ship_addr['state'];
+			$req->To->StreetAddress = ucwords($ship_addr['address_1']);
+			$req->To->StreetAddress2 = ucwords($ship_addr['address_2']);
+			$req->To->Notify = false;
+			$req->To->Residential = false;
+			$req->PackageType = 'PACKAGE';
+			foreach ($shiptime_pkgs as $pkg) {
+				$item = new emergeit\LineItem();
+				$item->Length->UnitsType = 'IN';
+				$item->Length->Value = ceil(woocommerce_get_dimension($pkg['length'], 'in'));
+				$item->Width->UnitsType = 'IN';
+				$item->Width->Value = ceil(woocommerce_get_dimension($pkg['width'], 'in'));
+				$item->Height->UnitsType = 'IN';
+				$item->Height->Value = ceil(woocommerce_get_dimension($pkg['height'], 'in'));
+				$item->Weight->UnitsType = 'LB';
+				// TODO: Support packages < 1 LB
+				$pkg_weight = woocommerce_get_weight($pkg['weight'], 'lbs');
+				$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
+
+				if ($order->shipping_country != $shiptime_auth->country) {
+					$desc = array();
+					foreach ( $order->get_items( array( 'line_item' ) ) as $iid => $data ) {
+						$product = $order->get_product_from_item( $data );
+						$desc[] = $product->get_title();
+					}
+					$item->Description = implode(',', $desc);
+				}
+
+				$req->ShipmentItems[] = $item;
+			}
+			$req->DeferredProcessing = false;
 
 			if ($order->shipping_country != $shiptime_auth->country) {
-				$desc = array();
-				foreach ( $order->get_items( array( 'line_item' ) ) as $iid => $data ) {
-					$product = $order->get_product_from_item( $data );
-					$desc[] = $product->get_title();
+				// Int'l shipments - Customs Invoice
+				$dt = new emergeit\DutiesAndTaxes();
+				$dt->Dutiable = true;
+				$sel = sanitize_text_field($_GET['shiptime_selection']);
+				if ($sel !== 'CONSIGNEE') { $sel = 'SHIPPER'; }
+				$dt->Selection = $sel;
+				$req->CustomsInvoice->DutiesAndTaxes = $dt;
+
+				$ic = new emergeit\InvoiceContact();
+				$ic->City = ucwords($bill_addr['city']);
+				$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : 'NA';
+				$ic->CountryCode = $order->shipping_country;
+				$ic->Email = $bill_addr['email'];
+				$ic->Phone = $bill_addr['phone'];
+				$ic->PostalCode = $bill_addr['postcode'];
+				$ic->Province = $bill_addr['state'];
+				$ic->StreetAddress = ucwords($bill_addr['address_1']);
+				$ic->CustomsBroker = '-';
+				$ic->ShipperTaxId = '-';
+				$req->CustomsInvoice->InvoiceContact = $ic;
+
+				$req->CustomsInvoice->InvoiceItems = array();
+				foreach ( $order->get_items( array( 'line_item' ) ) as $item_id => $item ) {
+					$product = $order->get_product_from_item( $item );
+
+					$i = new emergeit\InvoiceItem();
+					$i->Code = get_post_meta($product->id, 'shiptime_hs_code', true);
+					$i->Description = $product->get_title();
+					$i->Origin = get_post_meta($product->id, 'shiptime_origin_country', true);
+					$i->Quantity->Value = (int)$item['qty'];
+					$i->UnitPrice->Amount = $item['line_subtotal'];
+					$i->UnitPrice->CurrencyCode = get_woocommerce_currency();
+
+					$req->CustomsInvoice->InvoiceItems[] = $i;
 				}
-				$item->Description = implode(',', $desc);
-			}
-
-			$req->ShipmentItems[] = $item;
-		}
-		$req->DeferredProcessing = false;
-
-		if ($order->shipping_country != $shiptime_auth->country) {
-			// Int'l shipments - Customs Invoice
-			$dt = new emergeit\DutiesAndTaxes();
-			$dt->Dutiable = true;
-			$sel = sanitize_text_field($_GET['shiptime_selection']);
-			if ($sel !== 'CONSIGNEE') { $sel = 'SHIPPER'; }
-			$dt->Selection = $sel;
-			$req->CustomsInvoice->DutiesAndTaxes = $dt;
-
-			$ic = new emergeit\InvoiceContact();
-			$ic->City = ucwords($bill_addr['city']);
-			$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : 'NA';
-			$ic->CountryCode = $order->shipping_country;
-			$ic->Email = $bill_addr['email'];
-			$ic->Phone = $bill_addr['phone'];
-			$ic->PostalCode = $bill_addr['postcode'];
-			$ic->Province = $bill_addr['state'];
-			$ic->StreetAddress = ucwords($bill_addr['address_1']);
-			$ic->CustomsBroker = '-';
-			$ic->ShipperTaxId = '-';
-			$req->CustomsInvoice->InvoiceContact = $ic;
-
-			$req->CustomsInvoice->InvoiceItems = array();
-			foreach ( $order->get_items( array( 'line_item' ) ) as $item_id => $item ) {
-				$product = $order->get_product_from_item( $item );
-
-				$i = new emergeit\InvoiceItem();
-				$i->Code = get_post_meta($product->id, 'shiptime_hs_code', true);
-				$i->Description = $product->get_title();
-				$i->Origin = get_post_meta($product->id, 'shiptime_origin_country', true);
-				$i->Quantity->Value = (int)$item['qty'];
-				$i->UnitPrice->Amount = $item['line_subtotal'];
-				$i->UnitPrice->CurrencyCode = get_woocommerce_currency();
-
-				$req->CustomsInvoice->InvoiceItems[] = $i;
-			}
-		} else {
-			unset($req->CustomsInvoice);
-		}
-
-
-		if ($this->_shippingClient->isConnected()) {
-
-			$resp = $this->_shippingClient->placeShipment($req);
-
-			// Store data from Response
-			$tracking_nums = $resp->TrackingNumbers;
-			if (!empty($tracking_nums)) {
-				$c=count($shiptime_pkgs);
-				$pkgs = array();
-				for ($i=1; $i<=$c; $i++) {
-				  $pkgs[] = array(
-						'weight' => sanitize_text_field($_GET["parcel_weight_{$i}"]),
-						'length' => sanitize_text_field($_GET["parcel_length_{$i}"]),
-						'width' => sanitize_text_field($_GET["parcel_width_{$i}"]),
-						'height' => sanitize_text_field($_GET["parcel_height_{$i}"])
-				  );
-				}
-				$wpdb->update(
-				  "{$wpdb->prefix}shiptime_order",
-				  array(
-						'package_data' => serialize($pkgs),
-						'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method']),
-						'tracking_nums' => serialize($tracking_nums),
-						'label_url' => $resp->LabelUrl,
-						'invoice_url' => $resp->InvoiceUrl,
-						'emergeit_id' => $resp->ShipId
-				  ),
-				  array(
-						'post_id' => $id
-				  ),
-				  array(
-						'%s',
-						'%s',
-						'%s',
-						'%s',
-						'%s',
-						'%d'
-				  ),
-				  array(
-						'%d'
-				  )
-				);
-				$wpdb->update(
-				  "{$wpdb->prefix}woocommerce_order_items",
-				  array(
-						'order_item_name' => sanitize_text_field($_GET['shiptime_shipping_method'])
-				  ),
-				  array( 'order_id' => $id, 'order_item_type' => 'shipping' ),
-				  array( '%s' ),
-				  array( '%d', '%s' )
-				);
-
-				// Return to order page
-				wp_safe_redirect( admin_url("/post.php?post={$id}&action=edit") );
 			} else {
-				$msg = '<div class="error"><p>';
-				$msg .= "Unable to create shipment.";
-				foreach ($resp->Messages as $m) {
-					$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r(htmlentities($m->Text), true)."</pre>";
+				unset($req->CustomsInvoice);
+			}
+
+
+			if ($this->_shippingClient->isConnected()) {
+
+				$resp = $this->_shippingClient->placeShipment($req);
+
+				// Store data from Response
+				$tracking_nums = $resp->TrackingNumbers;
+				if (!empty($tracking_nums)) {
+					$c=count($shiptime_pkgs);
+					$pkgs = array();
+					for ($i=1; $i<=$c; $i++) {
+					  $pkgs[] = array(
+							'weight' => sanitize_text_field($_GET["parcel_weight_{$i}"]),
+							'length' => sanitize_text_field($_GET["parcel_length_{$i}"]),
+							'width' => sanitize_text_field($_GET["parcel_width_{$i}"]),
+							'height' => sanitize_text_field($_GET["parcel_height_{$i}"])
+					  );
+					}
+					$wpdb->update(
+					  "{$wpdb->prefix}shiptime_order",
+					  array(
+							'package_data' => serialize($pkgs),
+							'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method']),
+							'tracking_nums' => serialize($tracking_nums),
+							'label_url' => $resp->LabelUrl,
+							'invoice_url' => $resp->InvoiceUrl,
+							'emergeit_id' => $resp->ShipId
+					  ),
+					  array(
+							'post_id' => $id
+					  ),
+					  array(
+							'%s',
+							'%s',
+							'%s',
+							'%s',
+							'%s',
+							'%d'
+					  ),
+					  array(
+							'%d'
+					  )
+					);
+					$wpdb->update(
+					  "{$wpdb->prefix}woocommerce_order_items",
+					  array(
+							'order_item_name' => sanitize_text_field($_GET['shiptime_shipping_method'])
+					  ),
+					  array( 'order_id' => $id, 'order_item_type' => 'shipping' ),
+					  array( '%s' ),
+					  array( '%d', '%s' )
+					);
+
+					// Return to order page
+					wp_safe_redirect( admin_url("/post.php?post={$id}&action=edit") );
+				} else {
+					$msg = '<div class="error"><p>';
+					$msg .= "Unable to create shipment.";
+					foreach ($resp->Messages as $m) {
+						$msg .= "<pre><strong>".print_r($m->Severity, true)."</strong>: ".print_r(htmlentities($m->Text), true)."</pre>";
+					}
+					$msg .= '</p></div>';
+					ob_start();
+					echo $msg;
 				}
-				$msg .= '</p></div>';
+
+			} else {
+				$msg = '<div class="error"><p>Connection to ShipTime has failed. Please try again in a moment.</p></div>';
 				ob_start();
 				echo $msg;
 			}
-
 		} else {
-			$msg = '<div class="error"><p>Connection to ShipTime has failed. Please try again in a moment.</p></div>';
-			ob_start();
-			echo $msg;
+			// No login row found or shiptime_signup_required transient is set
 		}
 	}
 
@@ -1393,7 +1404,11 @@ class WC_Order_ShipTime {
 		if (!class_exists('WC_Order')) {
 			return false;
 		}
-		return new WC_Order($orderId);
+		try {
+			return new WC_Order($orderId);
+		} catch (Exception $e) {
+			return false;
+		}
 	}
 
 	function obj_check($obj, $prop) {

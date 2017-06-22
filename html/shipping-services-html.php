@@ -54,38 +54,42 @@
 					$shipping_services = sortServices($shipping_services);
 
 					$this->available_services = array();
-					foreach ($shipping_services as $service_id => $data) {
-						$this->available_services[] = new emergeit\ShippingService($service_id,$data['ServiceName'],$data['CarrierId'],$data['CarrierName'],$shiptime_auth->country);
+					if (is_array($shipping_services)) {
+						foreach ($shipping_services as $service_id => $data) {
+							$this->available_services[] = new emergeit\ShippingService($service_id,$data['ServiceName'],$data['CarrierId'],$data['CarrierName'],$shiptime_auth->country);
+						}
 					}
 
 					$shiptime_settings = get_option('woocommerce_shiptime_settings');
 
-					foreach ( $this->available_services as $service) {
-						if ($service->isValid()) {
-							$intl = false;
-							if (!$service->isDomestic()) { $intl = true; } ?>
-							<tr<?php if ($intl) echo " class='intl'"; ?> style='height:40px'>
-								<td>
-									<input type="hidden" name="services[<?php echo $service->getId(); ?>][name]" value="<?php echo $service->getFullName(); ?>" />
-									<input type="hidden" name="services[<?php echo $service->getId(); ?>][intl]" value="<?php echo $intl ? 1 : 0; ?>" />
-									<?php echo '<strong>'.$service->getName().'</strong>'; ?>
-								</td>
-								<td>
-									<?php echo $shipping_services[$service->getId()]['CarrierName']; ?>
-								</td>
-								<td class="check-column">
-									<label>
-										<input type="checkbox" name="services[<?php echo $service->getId(); ?>][enabled]" <?php checked( (isset($this->services[$service->getId()]['enabled']) || $shiptime_settings === false ), true ); ?> />
-									</label>
-								</td>
-								<td>
-									<?php echo get_woocommerce_currency_symbol(); ?><input type="text" name="services[<?php echo $service->getId(); ?>][markup_fixed]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getId()]['markup_fixed'] ) ? $this->services[$service->getId()]['markup_fixed'] : ''; ?>" size="4" />
-								</td>
-								<td>
-									<input type="text" name="services[<?php echo $service->getId(); ?>][markup_percentage]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getId()]['markup_percentage'] ) ? $this->services[$service->getId()]['markup_percentage'] : ''; ?>" size="4" />%
-								</td>
-							</tr>
-							<?php
+					if (is_array($this->available_services)) {
+						foreach ( $this->available_services as $service) {
+							if ($service->isValid()) {
+								$intl = false;
+								if (!$service->isDomestic()) { $intl = true; } ?>
+								<tr<?php if ($intl) echo " class='intl'"; ?> style='height:40px'>
+									<td>
+										<input type="hidden" name="services[<?php echo $service->getId(); ?>][name]" value="<?php echo $service->getFullName(); ?>" />
+										<input type="hidden" name="services[<?php echo $service->getId(); ?>][intl]" value="<?php echo $intl ? 1 : 0; ?>" />
+										<?php echo '<strong>'.$service->getName().'</strong>'; ?>
+									</td>
+									<td>
+										<?php echo $shipping_services[$service->getId()]['CarrierName']; ?>
+									</td>
+									<td class="check-column">
+										<label>
+											<input type="checkbox" name="services[<?php echo $service->getId(); ?>][enabled]" <?php checked( (isset($this->services[$service->getId()]['enabled']) || $shiptime_settings === false ), true ); ?> />
+										</label>
+									</td>
+									<td>
+										<?php echo get_woocommerce_currency_symbol(); ?><input type="text" name="services[<?php echo $service->getId(); ?>][markup_fixed]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getId()]['markup_fixed'] ) ? $this->services[$service->getId()]['markup_fixed'] : ''; ?>" size="4" />
+									</td>
+									<td>
+										<input type="text" name="services[<?php echo $service->getId(); ?>][markup_percentage]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getId()]['markup_percentage'] ) ? $this->services[$service->getId()]['markup_percentage'] : ''; ?>" size="4" />%
+									</td>
+								</tr>
+								<?php
+							}
 						}
 					}
 				?>
