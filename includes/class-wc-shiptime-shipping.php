@@ -380,7 +380,8 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					$req->CustomsInvoice->InvoiceItems = array();
 					foreach ($items as $item) {
 						$i = new emergeit\InvoiceItem();
-						$i->Code = get_post_meta($item['id'], 'shiptime_hs_code', true);
+						$hs_code = get_post_meta($item['id'], 'shiptime_hs_code', true);
+						$i->Code = str_replace(".", "", $hs_code);
 						$i->Description = $item['name'];
 						$i->Origin = get_post_meta($item['id'], 'shiptime_origin_country', true);
 						$i->Quantity->Value = (int)$item['quantity'];

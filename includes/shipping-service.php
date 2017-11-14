@@ -189,6 +189,56 @@ class ShippingService {
 				$this->originCountries = array('CA');
 				$this->destCountries = array('CA');			
 				break;
+			case 'USPS':
+				case 'Express_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				case 'Priority_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				case 'ParcelSelect_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				default:
+					$this->originCountries = array('US');
+					$this->destCountries = array('NONE');
+					break;
+			case 'UPS':
+				case 'Ground_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				case '3DaySelect_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				case '2ndDayAirAM_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				case '2ndDayAir_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				case 'NextDayAirSaver_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				case 'NextDayAirEarlyAM_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				case 'NextDayAir_EP':
+					$this->originCountries = array('US');
+					$this->destCountries = array('US');
+					break;
+				default:
+					$this->originCountries = array('US');
+					$this->destCountries = array('NONE');
+					break;
 			default:
 				$this->originCountries = array('NONE');
 				$this->destCountries = array('NONE');
@@ -197,7 +247,7 @@ class ShippingService {
 	}
 
 	public function isDomestic() {
-		return (in_array($this->homeCountry, $this->destCountries));
+		return (in_array($this->homeCountry, $this->originCountries) && in_array($this->homeCountry, $this->destCountries));
 	}
 
 	public function isIntl() {
@@ -210,7 +260,7 @@ class ShippingService {
 	}
 
 	public function isValid() {
-		return (!in_array('NONE', $this->originCountries) && !in_array('NONE', $this->destCountries));
+		return (in_array($this->homeCountry, $this->originCountries) && !in_array('NONE', $this->originCountries) && !in_array('NONE', $this->destCountries));
 	}
 
 	public function getId() {

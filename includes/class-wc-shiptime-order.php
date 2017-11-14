@@ -22,6 +22,8 @@ class WC_Order_ShipTime {
 	const DHL_TRACKING = "http://www.dhl.com/content/g0/en/express/tracking.shtml?AWB=";
 	const DICOM_TRACKING = "https://www.dicom.com/en/dicomexpress/tracking/load-tracking/";
 	const LOOMIS_TRACKING = "http://www.loomisexpress.com/ca/wfTrackingStatus.aspx?PieceNumber=";
+	const UPS_TRACKING = "https://wwwapps.ups.com/tracking/tracking.cgi?tracknum=";
+	const USPS_TRACKING = "https://tools.usps.com/go/TrackConfirmAction?tLabels=";
 	
 	private $shiptime_carriers = array();
 	private $carrier_list = array(
@@ -31,7 +33,9 @@ class WC_Order_ShipTime {
 		'Canada Post' => CANPOST_TRACKING,
 		'Purolator' => PURO_TRACKING,
 		'Dicom' => DICOM_TRACKING,
-		'Loomis' => LOOMIS_TRACKING
+		'Loomis' => LOOMIS_TRACKING,
+		'UPS' => UPS_TRACKING,
+		'USPS' => USPS_TRACKING
 	);
 
 	private $shiptime_domestic = array();
@@ -634,18 +638,18 @@ class WC_Order_ShipTime {
 			if ($markup_fixed>0) {
 				$r['details'] .= "Fixed Markup: ".$pre.$markup_fixed."<br>";
 				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(($total_before_tax+$markup_fixed),2)."<br>";
-				$r['details'] .= $tax_type.": ".$pre.$taxes."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.$taxes."<br>"; }
 				$total = number_format(($total_after_tax+$markup_fixed),2);
 				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
 			} elseif ($markup_percentage>0) {
 				$r['details'] .= "Percentage Markup: ".$markup_percentage."%<br>";
 				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00,2)."<br>";
-				$r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$taxes*(1+$markup_percentage/100.00))/100.00,2)."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$taxes*(1+$markup_percentage/100.00))/100.00,2)."<br>"; }
 				$total = number_format(ceil(100*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00,2);
 				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
 			} else {
 				$r['details'] .= "Total (w/o taxes): ".$pre.$total_before_tax."<br>";
-				$r['details'] .= $tax_type.": ".$pre.$taxes."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.$taxes."<br>"; }
 				$total = $total_after_tax;
 				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
 			}
