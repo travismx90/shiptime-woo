@@ -10,7 +10,7 @@
 require_once(dirname(__FILE__).'/../connector/RatingClient.php');
 require_once(dirname(__FILE__).'/../connector/ShippingClient.php');
 require_once(dirname(__FILE__).'/../connector/SignupClient.php');
-require_once(dirname(__FILE__).'/../connector/CurrencyUtil.php');
+require_once(dirname(__FILE__).'/../utils/CurrencyUtil.php');
 
 class WC_Order_ShipTime {
 

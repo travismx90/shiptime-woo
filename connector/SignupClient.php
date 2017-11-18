@@ -94,5 +94,3 @@ class GetServicesResponse extends EmergeitApiResponse
 		$this->ServiceOptions = array(new CarrierServiceOption());
 	}
 }
-
-?>

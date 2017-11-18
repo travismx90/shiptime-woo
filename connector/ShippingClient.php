@@ -159,5 +159,3 @@ class TrackShipmentResponse extends EmergeitApiResponse
 		$this->ProofOfDelivery = new ProofOfDelivery();
 	}
 }
-
-?>

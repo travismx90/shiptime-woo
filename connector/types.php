@@ -25,7 +25,7 @@ class Amount
 	public $Value = null;
 }
 
-class CarrierServiceOption 
+class CarrierServiceOption
 {
 	public $CarrierId = null;
 	public $CarrierName = null;
@@ -44,12 +44,12 @@ class CustomsInvoice
 	{
 		$this->init();
 	}
-	
+
 	public function __clone()
 	{
 		$this->init();
 	}
-	
+
 	private function init()
 	{
 		$this->DutiesAndTaxes = new DutiesAndTaxes();
@@ -69,7 +69,7 @@ class Event
 	public $Location = null;
 	public $Name = null;
 	public $Status = null;
-	public $TimeStamp = null;	
+	public $TimeStamp = null;
 }
 
 class HistoryFilters
@@ -109,12 +109,12 @@ class InvoiceItem
 	{
 		$this->init();
 	}
-	
+
 	public function __clone()
 	{
 		$this->init();
 	}
-	
+
 	private function init()
 	{
 		$this->Quantity = new Amount();
@@ -136,17 +136,17 @@ class LineItem
 	public $Weight = null;
 	public $DeclaredValue = null;
 	public $Description = null;
-	
+
 	public function __construct()
 	{
 		$this->init();
 	}
-	
+
 	public function __clone()
 	{
 		$this->init();
 	}
-	
+
 	private function init()
 	{
 		$this->Length = new Amount();
@@ -197,17 +197,17 @@ class Quote
 	public $TotalCharge = null;
 	public $TransitDays = null;
 	public $ServiceTerms = null;
-	
+
 	public function __construct()
 	{
 		$this->init();
 	}
-	
+
 	public function __clone()
 	{
 		$this->init();
 	}
-	
+
 	private function init()
 	{
 		$this->BaseCharge = new MoneyAmount();
@@ -234,17 +234,17 @@ class Shipment
 	public $To = null;
 	public $TotalWeight = null;
 	public $TrackId = null;
-	
+
 	public function __construct()
 	{
 		$this->init();
 	}
-	
+
 	public function __clone()
 	{
 		$this->init();
 	}
-	
+
 	private function init()
 	{
 		$this->From = new Address();
@@ -258,17 +258,17 @@ class ShipmentItem
 	public $Width = null;
 	public $Height = null;
 	public $Weight = null;
-	
+
 	public function __construct()
 	{
 		$this->init();
 	}
-	
+
 	public function __clone()
 	{
 		$this->init();
 	}
-	
+
 	private function init()
 	{
 		$this->Length = new Amount();
@@ -283,17 +283,17 @@ class Surcharge
 	public $Price = null;
 	public $Code = null;
 	public $Name = null;
-	
+
 	public function __construct()
 	{
 		$this->init();
 	}
-	
+
 	public function __clone()
 	{
 		$this->init();
 	}
-	
+
 	private function init()
 	{
 		$this->Price = new MoneyAmount();
@@ -305,17 +305,17 @@ class Tax
 	public $Price = null;
 	public $Code = null;
 	public $Name = null;
-	
+
 	public function __construct()
 	{
 		$this->init();
 	}
-	
+
 	public function __clone()
 	{
 		$this->init();
 	}
-	
+
 	private function init()
 	{
 		$this->Price = new MoneyAmount();
@@ -342,5 +342,3 @@ class TrackingRecord
 		$this->Events = array(new Event());
 	}
 }
-
-?>

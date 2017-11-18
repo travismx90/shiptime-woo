@@ -7,7 +7,7 @@
 	Author: shiptime
 	Author URI: http://www.shiptime.com
 
-	Copyright: 2016 ShipTime
+	Copyright: 2017 ShipTime
 	License: GNU General Public License v3.0
 	License URI: http://www.gnu.org/licenses/gpl-3.0.html
 */
@@ -153,9 +153,9 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			require_once ('includes/box.php');
 			require_once ('includes/package.php');
 			require_once ('includes/shipment.php');
-			// Helper classes
+			// Helper & Utility classes
 			require_once ('includes/shipping-service.php');
-			require_once ('connector/CurrencyUtil.php');
+			require_once ('utils/CurrencyUtil.php');
 			// Main class responsible for generating shipping rates
 			require_once ('includes/class-wc-shiptime-shipping.php');
 		}
@@ -288,7 +288,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	new ShipTime_WooCommerce(); // Instantiate main class
 
 } else {
-		echo '<div class="error">
-		<p>An installation of WooCommerce is required to use the ShipTime plugin.</p>
-		</div>';
+	echo '<div class="error">
+	<p>An installation of WooCommerce is required to use the ShipTime plugin.</p>
+	</div>';
 }

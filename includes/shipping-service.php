@@ -29,8 +29,6 @@ class ShippingService {
 	}
 
 	// TODO: Add services here as they are added to the plugin
-	// This function essentially creates a whitelist of 
-	// shipping services that are available in the UI
 	public function setOriginDest() {
 		switch ($this->carrierName) {
 			case 'FedEx':
@@ -280,5 +278,3 @@ class ShippingService {
 	}
 
 }
-
-?>

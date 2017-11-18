@@ -22,21 +22,21 @@ abstract class ApiClientBase
 
 		$this->_wsdlUrl = $baseUrl . $wsdlUri;
 
-    $opts = array(
-      'trace' => 1, // enables tracing of requests so faults can be backtraced
-      'exceptions' => 1, // SOAP errors throw exceptions of type SoapFault
-      'connection_timeout' => 10, // defines timeout for connection to SOAP service
-      'cache_wsdl' => WSDL_CACHE_NONE // Do NOT cache WSDL in case of updates to API
-    );
+		$opts = array(
+			'trace' => 1, // enables tracing of requests so faults can be backtraced
+			'exceptions' => 1, // SOAP errors throw exceptions of type SoapFault
+			'connection_timeout' => 10, // defines timeout for connection to SOAP service
+			'cache_wsdl' => WSDL_CACHE_NONE // Do NOT cache WSDL in case of updates to API
+		);
 
 		try {
-      $this->_soapClient = new \SoapClient($this->_wsdlUrl, $opts);
-    } catch (\Exception $e) {
-      // SoapFault Exception
-      //die("Connection to ShipTime failed.");
-      // Handle more gracefully with admin message when getSoapClient() == null
-      // "Connection to ShipTime has failed. Please try again in a moment."
-    }
+			$this->_soapClient = new \SoapClient($this->_wsdlUrl, $opts);
+		} catch (\Exception $e) {
+			// SoapFault Exception
+			//die("Connection to ShipTime failed.");
+			// Handle more gracefully with admin message when getSoapClient() == null
+			// "Connection to ShipTime has failed. Please try again in a moment."
+		}
 	}
 
 	public function getLastReq() {
@@ -187,5 +187,3 @@ class EmergeitApiResponse
 		$this->Messages = array(new Message());
 	}
 }
-
-?>

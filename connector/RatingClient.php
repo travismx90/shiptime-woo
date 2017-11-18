@@ -92,5 +92,3 @@ class GetLocationResponse extends EmergeitApiResponse
 		$this->Location = new Location();
 	}
 }
-
-?>
