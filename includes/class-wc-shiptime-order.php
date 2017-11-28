@@ -11,6 +11,7 @@ require_once(dirname(__FILE__).'/../connector/RatingClient.php');
 require_once(dirname(__FILE__).'/../connector/ShippingClient.php');
 require_once(dirname(__FILE__).'/../connector/SignupClient.php');
 require_once(dirname(__FILE__).'/../utils/CurrencyUtil.php');
+require_once(dirname(__FILE__).'/../includes/shipping-service.php');
 
 class WC_Order_ShipTime {
 
@@ -40,7 +41,7 @@ class WC_Order_ShipTime {
 
 	private $shiptime_domestic = array();
 	private $shiptime_intl = array();
-	private $all_services = null;
+	private $svc_carriers = array();
 
 	private $_ratingClient = null;
 	private $_shippingClient = null;
@@ -168,11 +169,12 @@ class WC_Order_ShipTime {
 			$this->shipping_meta = array();
 			$this->shiptime_data = array();
 
-			// Set ServiceName => ServiceId pairs
+			// Set ServiceName => ServiceId and ServiceId => CarrierName pairs
 			$shiptime_settings = get_option('woocommerce_shiptime_settings');
 			if ($shiptime_settings && array_key_exists('services', $shiptime_settings)) {
 				foreach ($shiptime_settings['services'] as $serviceId => $data) {
 					if ($data['enabled'] == 'on') {
+						$this->svc_carriers[$serviceId] = $data['carrier'];
 						if ($data['intl'] == '1') {
 							$this->shiptime_intl[$data['name']] = $serviceId;
 						} else {
@@ -181,7 +183,6 @@ class WC_Order_ShipTime {
 					}
 				}
 			}
-			$this->all_services = array_merge($this->shiptime_domestic,$this->shiptime_intl);
 
 			$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 			if (is_object($shiptime_auth)) {
@@ -210,17 +211,28 @@ class WC_Order_ShipTime {
 	}
 
 	function get_shipping_meta($shiptime_quote) {
+		global $wpdb;		
+		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 		$quotes = self::casttoclass('stdClass', unserialize($shiptime_quote->quote));
 		$service = $shiptime_quote->shipping_method;
-
-		foreach ($quotes->AvailableRates as $quote) {
-			$l = strpos($quote->ServiceName, $quote->CarrierName) !== false ? $quote->ServiceName : $quote->CarrierName . " ". $quote->ServiceName;
-			if ($l == $service) {
-				return array(
-					'ServiceName' => $service,
-					'Packages' => unserialize($shiptime_quote->packages),
-					'Quote' => $quote
-				);
+		if (empty($quotes) || $service == 'Free Shipping' || $service == 'Shipping Rate' || $service == 'Shipping') {
+			// No live shipping rates returned. This order is either "flat rate", "free", or there was an error and we are in "fallback" mode
+			return array(
+				'ServiceName' => $service,
+				'Packages' => unserialize($shiptime_quote->packages),
+				'Quote' => new emergeit\Quote()
+			);
+		} else {
+			foreach ($quotes->AvailableRates as $quote) {
+				$svc = new emergeit\ShippingService(0, $quote->ServiceName, 0, $quote->CarrierName, $shiptime_auth->country);
+				$lbl = $quote->CarrierName . ' ' . $svc->getDisplayName();
+				if ($lbl == $service) {
+					return array(
+						'ServiceName' => $service,
+						'Packages' => unserialize($shiptime_quote->packages),
+						'Quote' => $quote
+					);
+				}
 			}
 		}
 
@@ -232,6 +244,7 @@ class WC_Order_ShipTime {
 	}
 
 	function add_shiptime_metabox() {
+
 		global $post;
 		global $wpdb;
 
@@ -304,7 +317,7 @@ class WC_Order_ShipTime {
 
 		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 
-		if($this->shiptime_data->emergeit_id == '1234') {
+		if(!isset($this->shiptime_data->emergeit_id) || $this->shiptime_data->emergeit_id == '1234') {
 			$href_url 				= admin_url( '/post.php?post='.$post->ID.'&action=edit&shiptime_place_shipment='.base64_encode( $post->ID ) );
 			$order 					= $this->get_wc_order( $post->ID );
 			$shipping_method 		= !empty($this->shiptime_data->shipping_service) ? $this->shiptime_data->shipping_service : $order->get_shipping_method();
@@ -316,8 +329,11 @@ class WC_Order_ShipTime {
 				$this->shipping_services = $this->shiptime_intl;
 			}
 			echo '<ul><li class="wide"><select class="select" name="shiptime_shipping_method" id="shiptime_shipping_method">';
-			foreach($this->shipping_services as $service_name => $service_code){
-				echo '<option value="'.$service_name.'" ' . selected(strtolower($shipping_method), strtolower($service_name)) . ' >'.$service_name.'</option>';
+			foreach($this->shipping_services as $service_name => $service_code) {
+				$cname = $this->svc_carriers[$service_code];
+				$sname = substr($service_name, strlen($cname)+1);
+				$svc = new emergeit\ShippingService(0, $sname, 0, $cname, $shiptime_auth->country);
+				echo '<option value="'.$service_name.'" ' . selected($shipping_method, $svc->getFullName()) . ' >'.$cname.' '.$svc->getDisplayName().'</option>';
 			}
 			echo '</select></li>';
 			if($order->shipping_country != $shiptime_auth->country) {
@@ -583,19 +599,33 @@ class WC_Order_ShipTime {
 	}
 
 	function shiptime_metabox_content3() {
+		global $post;
 		$quote = $this->shipping_meta['Quote'];
 
-		$rate_info = $this->shiptime_rate_details($quote);
+		if ($quote->TotalCharge->Amount == 0) {
+			// Free or flat rate shipping only
+			$order = $this->get_wc_order( $post->ID );
+			$current_rate = $order->get_total_shipping();
+			$quote->BaseCharge->Amount = $current_rate*100.00;
+			$quote->TotalBeforeTaxes->Amount = $current_rate*100.00;
+			$quote->TotalCharge->Amount = $current_rate*100.00;
+			$this->display_rate_details($quote);
+		} else {
+			// Carrier calculated shipping
+			$this->display_rate_details($quote);
+			if (get_woocommerce_currency() != 'CAD') {
+				echo "<br><em>Totals displayed in CAD</em><br>";
+				echo "Total (".get_woocommerce_currency()."): ".get_woocommerce_currency_symbol().emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$rate_info['total']);
+			}	
+		}
+	}
 
+	function display_rate_details($quote) {
+		$rate_info = $this->shiptime_rate_details($quote);
 		$k = 'details';
 		if (array_key_exists($k, $rate_info)) {
 			echo $rate_info[$k];
 		}
-
-		if (get_woocommerce_currency() != 'CAD') {
-			echo "<br><em>Totals displayed in CAD</em><br>";
-			echo "Total (".get_woocommerce_currency()."): ".get_woocommerce_currency_symbol().emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$rate_info['total']);
-		}		
 	}
 
 	function shiptime_rate_details($quote) {
@@ -613,11 +643,13 @@ class WC_Order_ShipTime {
 			$pre = get_woocommerce_currency_symbol();
 			$base = number_format($quote->BaseCharge->Amount/100.00,2);
 			$fuel = $accessorial = 0.00;
-			foreach ($quote->Surcharges as $surcharge) {
-				if ($surcharge->Code == 'FUEL') {
-					$fuel += $surcharge->Price->Amount/100.00;
-				} else {
-					$accessorial += $surcharge->Price->Amount/100.00;
+			if (is_array($quote->Surcharges)) {
+				foreach ($quote->Surcharges as $surcharge) {
+					if ($surcharge->Code == 'FUEL') {
+						$fuel += $surcharge->Price->Amount/100.00;
+					} else {
+						$accessorial += $surcharge->Price->Amount/100.00;
+					}
 				}
 			}
 			$markup_fixed = number_format($markup_fixed,2);
@@ -627,9 +659,11 @@ class WC_Order_ShipTime {
 			$total_before_tax = number_format($quote->TotalBeforeTaxes->Amount/100.00,2);
 			$total_after_tax = number_format($quote->TotalCharge->Amount/100.00,2);
 			$taxes = number_format($total_after_tax-$total_before_tax,2);
-			foreach ($quote->Taxes as $tax) {
-				$tax_type = $tax->Name;
-				break;
+			if (is_array($quote->Taxes)) {
+				foreach ($quote->Taxes as $tax) {
+					$tax_type = $tax->Name;
+					break;
+				}
 			}
 
 			$r['details'] = "Base Charge: ".$pre.$base."<br>";
@@ -1327,12 +1361,12 @@ class WC_Order_ShipTime {
 
 				if (!empty($shipRates->AvailableRates)) {
 					foreach ($shipRates->AvailableRates as $shipRate) {
-						$l = strpos($shipRate->ServiceName, $shipRate->CarrierName) !== false ? $shipRate->ServiceName : $shipRate->CarrierName . " " . (!$is_domestic && stripos($shipRate->ServiceName, 'Ground') !== false ? "International " : "") . $shipRate->ServiceName;
-						if (strtolower($l) == strtolower(sanitize_text_field($_GET['shiptime_shipping_method']))) {
+						$svc = new emergeit\ShippingService(0, $shipRate->ServiceName, 0, $shipRate->CarrierName, $shiptime_auth->country);
+						if ($svc->getFullName() == sanitize_text_field($_GET['shiptime_shipping_method'])) {
 							$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_order_currency()));
 							$rate_info = $this->shiptime_rate_details($shipRate);
 							if (array_key_exists('total', $rate_info) && array_key_exists('details', $rate_info)) {
-								$msg = '<strong>'.$l.'</strong><br>'.$rate_info['details'];
+								$msg = '<strong>'.$shipRate->CarrierName.' '.$svc->getDisplayName().'</strong><br>'.$rate_info['details'];
 								if (get_woocommerce_currency() != 'CAD') {
 									$msg .= "<br><em>Totals displayed in CAD</em><br>";
 									$msg .= "Total (".get_woocommerce_currency()."): ".get_woocommerce_currency_symbol().emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$rate_info['total']);
@@ -1341,6 +1375,10 @@ class WC_Order_ShipTime {
 							}
 							break;
 						}
+					}
+					if (empty($msg)) {
+						$msg = "That shipping service is not available for this order. Please select a different service.";
+						$err = true;
 					}
 				} else {
 					$msg = "Unable to determine shipping rates.";

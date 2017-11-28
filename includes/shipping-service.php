@@ -15,6 +15,7 @@ class ShippingService {
 	public $carrierName = null;
 	public $serviceId = null;
 	public $serviceName = null;
+	public $displayName = null;
 	public $originCountries = array();
 	public $destCountries = array();
 	public $homeCountry = null;
@@ -22,14 +23,15 @@ class ShippingService {
 	public function __construct($serviceId,$serviceName,$carrierId,$carrierName,$homeCountry='CA') {
 		$this->serviceId = $serviceId;
 		$this->serviceName = $serviceName;
+		$this->displayName = $serviceName;
 		$this->carrierId = $carrierId;
 		$this->carrierName = $carrierName;
 		$this->homeCountry = $homeCountry;
-		$this->setOriginDest();
+		$this->setServiceData();
 	}
 
 	// TODO: Add services here as they are added to the plugin
-	public function setOriginDest() {
+	public function setServiceData() {
 		switch ($this->carrierName) {
 			case 'FedEx':
 				switch ($this->serviceName) {
@@ -80,18 +82,22 @@ class ShippingService {
 					case 'EXPRESS 10:30':
 						$this->originCountries = array('CA','US');
 						$this->destCountries = array('ALL');
+						$this->displayName = 'Express 10:30AM';
 						break;
 					case 'EXPRESS 12:00':
 						$this->originCountries = array('CA','US');
 						$this->destCountries = array('ALL');
+						$this->displayName = 'Express 12PM';
 						break;
 					case 'EXPRESS 9:00':
 						$this->originCountries = array('CA','US');
 						$this->destCountries = array('ALL');
+						$this->displayName = 'Express 9AM';
 						break;
 					case 'EXPRESS WORLDWIDE':
 						$this->originCountries = array('CA','US');
 						$this->destCountries = array('ALL');
+						$this->displayName = 'Express Worldwide';
 						break;
 					default:
 						$this->originCountries = array('CA','US');
@@ -112,66 +118,82 @@ class ShippingService {
 					case 'Purolator Express Envelope U.S.':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('US');
+						$this->displayName = 'Express Envelope U.S.';
 						break;
 					case 'Purolator Express Pack':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Express Pack';
 						break;
 					case 'Purolator Express 10:30AM':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Express 10:30AM';
 						break;
 					case 'Purolator Express':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Express';
 						break;
 					case 'Purolator Express Pack 9AM':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Express Pack 9AM';
 						break;
 					case 'Purolator Express Envelope International':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('ALL');
+						$this->displayName = 'Express Envelope International';
 						break;
 					case 'Purolator Express Envelope 9AM':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Express Envelope 9AM';
 						break;
 					case 'Purolator Ground':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Ground';
 						break;
 					case 'Purolator Express Pack U.S.':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('US');
+						$this->displayName = 'Express Pack U.S.';
 						break;
 					case 'Purolator Express 9AM':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Express 9AM';
 						break;
 					case 'Purolator Express International':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('ALL');
+						$this->displayName = 'Express International';
 						break;
 					case 'Purolator Ground U.S.':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('US');
+						$this->displayName = 'Ground U.S.';
 						break;						
 					case 'Purolator Express Envelope 10:30AM':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Express Envelope 10:30AM';
 						break;
 					case 'Purolator Express U.S.':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('US');
+						$this->displayName = 'Express U.S.';
 						break;
 					case 'Purolator Express Envelope':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Express Envelope.';
 						break;
 					case 'Purolator Express Pack 10:30AM':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
+						$this->displayName = 'Express Pack 10:30AM';
 						break;
 					default:
 						$this->originCountries = array('CA');
@@ -188,55 +210,71 @@ class ShippingService {
 				$this->destCountries = array('CA');			
 				break;
 			case 'USPS':
-				case 'Express_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				case 'Priority_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				case 'ParcelSelect_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				default:
-					$this->originCountries = array('US');
-					$this->destCountries = array('NONE');
-					break;
+				switch ($this->serviceName) {
+					case 'Express_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = 'Express';
+						break;
+					case 'Priority_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = 'Priority';
+						break;
+					case 'ParcelSelect_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = 'Parcel Select';
+						break;
+					default:
+						$this->originCountries = array('US');
+						$this->destCountries = array('NONE');
+						break;
+				}
+				break;
 			case 'UPS':
-				case 'Ground_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				case '3DaySelect_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				case '2ndDayAirAM_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				case '2ndDayAir_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				case 'NextDayAirSaver_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				case 'NextDayAirEarlyAM_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				case 'NextDayAir_EP':
-					$this->originCountries = array('US');
-					$this->destCountries = array('US');
-					break;
-				default:
-					$this->originCountries = array('US');
-					$this->destCountries = array('NONE');
-					break;
+				switch ($this->serviceName) {
+					case 'Ground_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = 'Ground';
+						break;
+					case '3DaySelect_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = '3 Day Select';
+						break;
+					case '2ndDayAirAM_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = '2nd Day Air AM';
+						break;
+					case '2ndDayAir_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = '2nd Day Air';
+						break;
+					case 'NextDayAirSaver_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = 'Next Day Air Saver';
+						break;
+					case 'NextDayAirEarlyAM_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = 'Next Day Air Early AM';
+						break;
+					case 'NextDayAir_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('US');
+						$this->displayName = 'Next Day Air';
+						break;
+					default:
+						$this->originCountries = array('US');
+						$this->destCountries = array('NONE');
+						break;
+				}
+				break;
 			default:
 				$this->originCountries = array('NONE');
 				$this->destCountries = array('NONE');
@@ -275,6 +313,10 @@ class ShippingService {
 		} else {
 			return $this->carrierName.' '.$this->serviceName;
 		}
+	}
+
+	public function getDisplayName() {
+		return $this->displayName;
 	}
 
 }

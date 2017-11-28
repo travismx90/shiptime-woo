@@ -207,8 +207,64 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			wp_enqueue_script('shiptime-cart', plugins_url('js/wc-shiptime-cart-html.js', __FILE__), array('jquery'), null, true);
 		}
 
-		// Add product shipping fields necessary for int'l shipments
+		// Add product-level shipping fields
 		public function add_product_fields() {
+			echo '<h2 style="font-weight:600;border-top:1px solid #eee">ShipTime Settings</h2>';
+
+			// Shipping Method
+			woocommerce_wp_select(
+				array(
+					'id' => 'shiptime_ship_method',
+					'label' => __('Shipping Method', 'wc_auctioninc'),
+					'options' => array(
+						'' => __('-- Select -- ', 'wc_auctioninc'),
+						'C' => __('Carrier Rates', 'wc_auctioninc'),
+						'F' => __('Flat Fee', 'wc_auctioninc'),
+						'Z' => __('Free', 'wc_auctioninc'),
+						'D' => __('Free Domestic', 'wc_auctioninc')
+					),
+					'desc_tip' => 'true',
+					'description' => '(Optional) Select the shipping method to apply to this product. Default: Carrier Rates'
+				)
+			);
+
+			echo '<span class="shiptime_ff">';
+
+			// Flat Fee for Domestic Shipments
+			woocommerce_wp_text_input(
+				array(
+					'id' => 'shiptime_ff_dom',
+					'label' => 'Flat Fee - Domestic Shipments',
+					'placeholder' => '0.00',
+					'type' => 'number',
+					'custom_attributes' => array(
+						'step' => '0.01',
+						'min' => '0.01'
+					),
+					'desc_tip' => 'true',
+					'description' => 'Enter shipping fee for this product which will be used for all domestic shipments. Fee is applied multiple times for cart quantities > 1.'
+				)
+			);
+
+			// Flat Fee for Intl Shipments
+			woocommerce_wp_text_input(
+				array(
+					'id' => 'shiptime_ff_intl',
+					'label' => 'Flat Fee - International Shipments',
+					'placeholder' => '0.00',
+					'type' => 'number',
+					'custom_attributes' => array(
+						'step' => '0.01',
+						'min' => '0.01'
+					),
+					'desc_tip' => 'true',
+					'description' => 'Enter shipping fee for this product which will be used for all international shipments. Fee is applied multiple times for cart quantities > 1.'
+				)
+			);
+
+			echo '</span>';
+
+			// The following fields are required for intl shipments
 			echo '<p><strong>International Shipping</strong></p>';
 
 			// HS Code
@@ -237,6 +293,33 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 		// Save function
 		public function save_product_fields($post_id) {
+			// Shipping Method
+			$shiptime_ship_method = $_POST['shiptime_ship_method'];
+			if (!empty($shiptime_ship_method) && strlen($shiptime_ship_method) == 1) {
+				update_post_meta($post_id, 'shiptime_ship_method', esc_attr($shiptime_ship_method));
+			}
+			else {
+				delete_post_meta($post_id, 'shiptime_ship_method');
+			}
+
+			// Flat Fee Dom
+			$shiptime_ff_dom = $_POST['shiptime_ff_dom'];
+			if (!empty($shiptime_ff_dom) && is_numeric($shiptime_ff_dom)) {
+				update_post_meta($post_id, 'shiptime_ff_dom', esc_attr($shiptime_ff_dom));
+			}
+			else {
+				delete_post_meta($post_id, 'shiptime_ff_dom');
+			}			
+
+			// Flat Fee Intl
+			$shiptime_ff_intl = $_POST['shiptime_ff_intl'];
+			if (!empty($shiptime_ff_intl) && is_numeric($shiptime_ff_intl)) {
+				update_post_meta($post_id, 'shiptime_ff_intl', esc_attr($shiptime_ff_intl));
+			}
+			else {
+				delete_post_meta($post_id, 'shiptime_ff_intl');
+			}	
+
 			// HS Code
 			$shiptime_hs_code = $_POST['shiptime_hs_code'];
 			if (!empty($shiptime_hs_code) && strlen($shiptime_hs_code) <= 20) {
@@ -280,6 +363,8 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 			if ($screen->base == 'woocommerce_page_wc-settings') {
 				wp_enqueue_script('shiptime-settings', plugins_url('js/wc-shiptime-shipping-settings.js', __FILE__), array('jquery'), null, true);
+			} elseif ($screen->base == 'post') {
+				wp_enqueue_script('shiptime-product-settings', plugins_url('js/wc-shiptime-product-shipping-settings.js', __FILE__), array('jquery'), null, true);
 			}
 		}
 

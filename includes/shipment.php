@@ -93,12 +93,14 @@ class ShipmentBuilder {
 				}
 			}
 		}
-		foreach ($this->Items as $item) {
-			if (!isset($package) || !$this->canPackage($item["length"], $item["width"], $item["height"], $item["weight"], $package, $boxs, $max_l, $max_w, $max_h)) {
-				$package = new Package();
-				$this->Packages[] = $package;
+		if (is_array($this->Items)) {
+			foreach ($this->Items as $item) {
+				if (!isset($package) || !$this->canPackage($item["length"], $item["width"], $item["height"], $item["weight"], $package, $boxs, $max_l, $max_w, $max_h)) {
+					$package = new Package();
+					$this->Packages[] = $package;
+				}
+				$package->pack($item["length"], $item["width"], $item["height"], $item["weight"]);
 			}
-			$package->pack($item["length"], $item["width"], $item["height"], $item["weight"]);
 		}
 		foreach ($this->Packages as $package) {
 			foreach (array_reverse($boxs) as $b) {

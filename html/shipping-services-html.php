@@ -6,6 +6,7 @@
 		<table class="shipping_services widefat">
 			<thead>
 				<th>&nbsp; Service</th>
+				<th>&nbsp; Display Name</th>
 				<th>&nbsp; Carrier</th>
 				<th class="check-column" style="padding:20px 10px 20px 0 !important">Enabled?<input style="margin-left:1px" type="checkbox" /></th>
 				<th>&nbsp; &nbsp;<?php echo sprintf('Markup (%s)', get_woocommerce_currency_symbol()); ?></th>
@@ -63,7 +64,7 @@
 					$shiptime_settings = get_option('woocommerce_shiptime_settings');
 
 					if (is_array($this->available_services)) {
-						foreach ( $this->available_services as $service) {
+						foreach ($this->available_services as $service) {
 							if ($service->isValid()) {
 								$intl = false;
 								if (!$service->isDomestic()) { $intl = true; } ?>
@@ -74,6 +75,10 @@
 										<?php echo '<strong>'.$service->getName().'</strong>'; ?>
 									</td>
 									<td>
+										<input type="text" name="services[<?php echo $service->getId(); ?>][display_name]" value="<?php echo isset( $this->services[$service->getId()]['display_name'] ) ? $this->services[$service->getId()]['display_name'] : $service->getDisplayName(); ?>" />
+									</td>
+									<td>
+										<input type="hidden" name="services[<?php echo $service->getId(); ?>][carrier]" value="<?php echo $shipping_services[$service->getId()]['CarrierName']; ?>" />
 										<?php echo $shipping_services[$service->getId()]['CarrierName']; ?>
 									</td>
 									<td class="check-column">

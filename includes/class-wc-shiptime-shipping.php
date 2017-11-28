@@ -200,6 +200,8 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 			$services[wc_clean($serviceId)] = array(
 				'id' => wc_clean($serviceId),
 				'name' => wc_clean($options['name']),
+				'display_name' => wc_clean($options['display_name']),
+				'carrier' => wc_clean($options['carrier']),
 				'intl' => wc_clean($options['intl']),
 				'enabled' => wc_clean($options['enabled']),
 				'markup_fixed' => wc_clean($options['markup_fixed']),
@@ -322,6 +324,12 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 				// Create an array of items to rate
 				$items = array();
 
+				// Total cost of all "flat fee" shipping items
+				$ff_shipping = 0;
+
+				// Does this order contain a "free" or "flat fee" shipping item
+				$free_or_ff = false;
+
 				// Loop through package items
 				foreach ($package['contents'] as $item_id => $values) {
 					// Skip digital items
@@ -330,8 +338,9 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					}
 
 					// Populate Item Data
+					$postid = $values['data']->post->ID;
 					$item = array();
-					$item["id"] = $values['data']->post->ID;
+					$item["id"] = $postid;
 					$item["sku"] = $values['data']->get_sku();
 					$item["name"] = $values['data']->post->post_name;
 					$item["quantity"] = $values['quantity'];
@@ -349,6 +358,28 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 						$item["width"] = 1;
 						$item["height"] = 1;
 					}
+
+					// Track all "free" shipping items
+					$ship_method = get_post_meta($postid, 'shiptime_ship_method', true);
+					if ($ship_method === 'Z' || ($ship_method === 'D' && $is_domestic)) {
+						$free_or_ff = true;
+						$item["send_to_api"] = false;
+					}
+
+					// Track all "flat fee" shipping items
+					$ff_dom = get_post_meta($postid, 'shiptime_ff_dom', true);
+					$ff_intl = get_post_meta($postid, 'shiptime_ff_intl', true);
+					if ($ship_method === 'F') {
+						$free_or_ff = true;
+						$item["send_to_api"] = false;
+						if (!$is_domestic && !empty($ff_intl) && is_numeric($ff_intl)) {
+							$ff_shipping += $ff_intl*$values['quantity'];
+						} elseif (!empty($ff_dom) && is_numeric($ff_dom)) {
+							$ff_shipping += $ff_dom*$values['quantity'];
+						}
+					}
+
+					if (!array_key_exists('send_to_api', $item)) $item["send_to_api"] = true;
 
 					// Add this item to array
 					$items[] = $item;
@@ -402,36 +433,20 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 				}
 
 				// Convert Items array to Packages array
-				$sh = new emergeit\ShipmentBuilder();
-				$sh->setItems($items);
-				$boxes = array();
-				// Normalize units of measure for API
-				foreach ($this->boxes as $box) {
-					$boxes[] = array(
-						'label' => $box['label'],
-						'weight' => woocommerce_get_weight($box['weight'], 'lbs'),
-						'inner_length' => woocommerce_get_dimension($box['inner_length'], 'in'),
-						'inner_width' => woocommerce_get_dimension($box['inner_width'], 'in'),
-						'inner_height' => woocommerce_get_dimension($box['inner_height'], 'in'),
-						'outer_length' => woocommerce_get_dimension($box['outer_length'], 'in'),
-						'outer_width' => woocommerce_get_dimension($box['outer_width'], 'in'),
-						'outer_height' => woocommerce_get_dimension($box['outer_height'], 'in')
-					);
-				}
-				$packages = $sh->package($boxes);
+				$packages = $this->pkg($items, true);
 
-				foreach ($packages as $package) {
+				foreach ($packages as $pkg) {
 					$item = new emergeit\LineItem();
 
-					$item->Length->UnitsType = $package->getDimUnit();
-					$item->Length->Value = $package->getLength();
-					$item->Width->UnitsType = $package->getDimUnit();
-					$item->Width->Value = $package->getWidth();
-					$item->Height->UnitsType = $package->getDimUnit();
-					$item->Height->Value = $package->getHeight();
-					$item->Weight->UnitsType = $package->getWeightUnit();
+					$item->Length->UnitsType = $pkg->getDimUnit();
+					$item->Length->Value = $pkg->getLength();
+					$item->Width->UnitsType = $pkg->getDimUnit();
+					$item->Width->Value = $pkg->getWidth();
+					$item->Height->UnitsType = $pkg->getDimUnit();
+					$item->Height->Value = $pkg->getHeight();
+					$item->Weight->UnitsType = $pkg->getWeightUnit();
 					// TODO: Support packages < 1 LB
-					$pkg_weight = $package->getWeight();
+					$pkg_weight = $pkg->getWeight();
 					$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 					$item->Description = 'Item Line Description';
 
@@ -455,13 +470,14 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					$shipRates = unserialize($cached_response);
 				} else {
 					// New API call
-					if ($this->ratingClient->isConnected()) {
-						$shipRates = $this->ratingClient->getRates($req);
-					}
-
-					if ($shipRates) {
-						// Cache quote data for 30 mins
-						set_transient($transient, serialize($shipRates), 30 * MINUTE_IN_SECONDS);
+					if (!empty($packages)) {
+						if ($this->ratingClient->isConnected()) {
+							$shipRates = $this->ratingClient->getRates($req);
+						}
+						if ($shipRates) {
+							// Cache quote data for 30 mins
+							set_transient($transient, serialize($shipRates), 30 * MINUTE_IN_SECONDS);
+						}
 					}
 				}
 
@@ -472,45 +488,48 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					echo 'END DEBUG API RESPONSE: SHIP RATES<br>';
 				}
 
-				if (!empty($shipRates->AvailableRates)) {
-					// Store response into DB
-					// Used to retrieve package level details later
-					if (!$cached) {
-						// Account for Metric/Imperial
-						foreach ($packages as $package) {
-							// Convert back from LB/IN (returned from API) to Metric if necessary (based on Woo setting)
-							$package->setWeight(round(wc_get_weight($package->getWeight(), get_option( 'woocommerce_weight_unit' ), 'lbs'), 1));
-							$package->setLength(round(wc_get_dimension($package->getLength(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
-							$package->setWidth(round(wc_get_dimension($package->getWidth(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
-							$package->setHeight(round(wc_get_dimension($package->getHeight(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
-						}
-						$wpdb->insert(
-							$wpdb->prefix.'shiptime_quote',
-							array(
-								'order_id' => 0,
-								'cart_sessid' => array_shift(array_keys($woocommerce->session->cart)),
-								'quote' => serialize($shipRates),
-								'packages' => serialize($packages)
-							),
-							array(
-								'%d', '%s', '%s', '%s'
-							)
-						);
-					}
+				// Store response into DB
+				// Used to retrieve package level details later
+				if (!$cached) {
+					// Make sure package data is for ALL items, not just carrier calculated
+					$packages = $this->pkg($items, false);
 
+					// Account for Metric/Imperial
+					foreach ($packages as $pkg) {
+						// Convert back from LB/IN (returned from API) to Metric if necessary (based on Woo setting)
+						$pkg->setWeight(round(wc_get_weight($pkg->getWeight(), get_option( 'woocommerce_weight_unit' ), 'lbs'), 1));
+						$pkg->setLength(round(wc_get_dimension($pkg->getLength(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
+						$pkg->setWidth(round(wc_get_dimension($pkg->getWidth(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
+						$pkg->setHeight(round(wc_get_dimension($pkg->getHeight(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
+					}
+					$wpdb->insert(
+						$wpdb->prefix.'shiptime_quote',
+						array(
+							'order_id' => 0,
+							'cart_sessid' => array_shift(array_keys($woocommerce->session->cart)),
+							'quote' => serialize($shipRates),
+							'packages' => serialize($packages)
+						),
+						array(
+							'%d', '%s', '%s', '%s'
+						)
+					);
+				}
+
+				if (isset($shipRates->AvailableRates)) {
 					foreach ($shipRates->AvailableRates as $shipRate) {
 						// Add Rate
-						$l = (strpos($shipRate->ServiceName, $shipRate->CarrierName) !== false ? $shipRate->ServiceName : $shipRate->CarrierName . " ". $shipRate->ServiceName) . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
-						$c = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0.00 : $shipRate->TotalCharge->Amount/100.00;
-						if ($c == 0) $l .= " (FREE)";
+						$lbl = $shipRate->CarrierName . " ". $this->services[$shipRate->ServiceId]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
+						$cost = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0.00 : $shipRate->TotalCharge->Amount/100.00;
+						if ($cost == 0) $lbl .= " (FREE)";
 						if ($this->services[$shipRate->ServiceId]['enabled'] == 'on') {
 							$markup_fixed = $this->services[$shipRate->ServiceId]['markup_fixed'];
 							$markup_fixed = is_numeric($markup_fixed) && !empty($markup_fixed) ? $markup_fixed : 0;
 							$markup_percentage = $this->services[$shipRate->ServiceId]['markup_percentage'];
 							$markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage/100.00 + 1 : 0;
-							if (!empty($c)) {
+							if (!empty($cost)) {
 								if (!empty($markup_fixed)) {
-									$c += $markup_fixed;
+									$cost += $markup_fixed;
 								} elseif (!empty($markup_percentage)) {
 									$base_charge = $shipRate->BaseCharge->Amount/100.00;
 									$fuel_charge = 0;
@@ -523,18 +542,22 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 										}
 									}
 									$tax_charge += ($shipRate->TotalCharge->Amount-$shipRate->TotalBeforeTaxes->Amount)/100.00;
-									$c = (($base_charge + $fuel_charge + $tax_charge) * $markup_percentage) + $accessorial_charge;
+									$cost = (($base_charge + $fuel_charge + $tax_charge) * $markup_percentage) + $accessorial_charge;
 								}
 								// API returns prices in CAD
 								// Convert, if necessary, to store currency
 								if (get_woocommerce_currency() != 'CAD') {
-									$c = emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$c);
+									$cost = emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$cost);
+								}
+								// Add cost of "flat fee" items if applicable
+								if (!empty($ff_shipping) && is_numeric($ff_shipping)) {
+									$cost = number_format($cost+$ff_shipping, 2);
 								}
 							}
 							$rate = array(
 								'id'    => $this->id . ':' . $shipRate->ServiceId,
-								'label' => $l,
-								'cost'  => $c
+								'label' => $lbl,
+								'cost'  => $cost
 							);
 							$sortedRates[] = $rate;
 						}
@@ -546,13 +569,29 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 						$this->add_rate($rate);
 					}
 
+				} elseif ($free_or_ff) {
+					// Check if we have only "free" and/or only "flat fee" items
+					$svc = "FREE";
+					$lbl = "Free Shipping";
+					$cost = 0;
+					if (!empty($ff_shipping) && is_numeric($ff_shipping)) {
+						$svc = "FLATFEE";
+						$lbl = "Shipping Rate";
+						$cost = number_format($ff_shipping, 2);
+					}
+					$rate = array(
+						'id'    => $this->id . ':' . $svc,
+						'label' => $lbl,
+						'cost'  => $cost
+					);
+					$this->add_rate($rate);
 				} else {
 					// Add fallback shipping rate if merchant has configured this setting
 					if (!empty($this->fallback_type) && !empty($this->fallback_fee)) {
 						$cost = $this->fallback_type === 'per_order' ? $this->fallback_fee : $woocommerce->cart->cart_contents_count * $this->fallback_fee;
 						if (!empty($this->fallback_max) && $this->fallback_type !== 'per_order' && $cost > $this->fallback_max) { $cost = $this->fallback_max; }
 						$rate = array(
-							'id' => $this->id . '_fallback_rate',
+							'id' => $this->id . ':FALLBACK',
 							'label' => 'Shipping',
 							'cost' => $cost
 						);
@@ -579,5 +618,36 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		}
 		return ($a['cost'] < $b['cost']) ? -1 : 1;
 	}
+
+	public function testCalc($item) {
+		return $item['send_to_api'];
+	}
+
+	public function pkg($items, $calcOnly=true) {
+		$sh = new emergeit\ShipmentBuilder();
+		if (!$calcOnly) {
+			// include all items in pkg data
+			$sh->setItems($items);
+		} else {
+			// include only carrier calc items in pkg data
+			$sh->setItems(array_filter($items, array($this, 'testCalc')));
+		}
+		$boxes = array();
+		// Normalize units of measure for API
+		foreach ($this->boxes as $box) {
+			$boxes[] = array(
+				'label' => $box['label'],
+				'weight' => woocommerce_get_weight($box['weight'], 'lbs'),
+				'inner_length' => woocommerce_get_dimension($box['inner_length'], 'in'),
+				'inner_width' => woocommerce_get_dimension($box['inner_width'], 'in'),
+				'inner_height' => woocommerce_get_dimension($box['inner_height'], 'in'),
+				'outer_length' => woocommerce_get_dimension($box['outer_length'], 'in'),
+				'outer_width' => woocommerce_get_dimension($box['outer_width'], 'in'),
+				'outer_height' => woocommerce_get_dimension($box['outer_height'], 'in')
+			);
+		}
+		return $sh->package($boxes);
+	}
+
 
 }
