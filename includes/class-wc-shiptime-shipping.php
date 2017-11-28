@@ -345,13 +345,13 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					$item["name"] = $values['data']->post->post_name;
 					$item["quantity"] = $values['quantity'];
 					$item["value"] = $values['data']->get_price();
-					$item["weight"] = woocommerce_get_weight($values['data']->get_weight(), 'lbs');
+					$item["weight"] = wc_get_weight($values['data']->get_weight(), 'lbs');
 					// If no weight set for product assume 1 lb
 					$item["weight"] = !empty($item["weight"]) ? $item["weight"] : 1;
 					if (!empty($values['data']->length) && !empty($values['data']->height) && !empty($values['data']->width)) {
-						$item["length"] = woocommerce_get_dimension($values['data']->length, 'in');
-						$item["width"] = woocommerce_get_dimension($values['data']->width, 'in');
-						$item["height"] = woocommerce_get_dimension($values['data']->height, 'in');
+						$item["length"] = wc_get_dimension($values['data']->length, 'in');
+						$item["width"] = wc_get_dimension($values['data']->width, 'in');
+						$item["height"] = wc_get_dimension($values['data']->height, 'in');
 					} else {
 						// If no L,W,H set for product assume 1x1x1 in
 						$item["length"] = 1;
@@ -637,13 +637,13 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		foreach ($this->boxes as $box) {
 			$boxes[] = array(
 				'label' => $box['label'],
-				'weight' => woocommerce_get_weight($box['weight'], 'lbs'),
-				'inner_length' => woocommerce_get_dimension($box['inner_length'], 'in'),
-				'inner_width' => woocommerce_get_dimension($box['inner_width'], 'in'),
-				'inner_height' => woocommerce_get_dimension($box['inner_height'], 'in'),
-				'outer_length' => woocommerce_get_dimension($box['outer_length'], 'in'),
-				'outer_width' => woocommerce_get_dimension($box['outer_width'], 'in'),
-				'outer_height' => woocommerce_get_dimension($box['outer_height'], 'in')
+				'weight' => wc_get_weight($box['weight'], 'lbs'),
+				'inner_length' => wc_get_dimension($box['inner_length'], 'in'),
+				'inner_width' => wc_get_dimension($box['inner_width'], 'in'),
+				'inner_height' => wc_get_dimension($box['inner_height'], 'in'),
+				'outer_length' => wc_get_dimension($box['outer_length'], 'in'),
+				'outer_width' => wc_get_dimension($box['outer_width'], 'in'),
+				'outer_height' => wc_get_dimension($box['outer_height'], 'in')
 			);
 		}
 		return $sh->package($boxes);

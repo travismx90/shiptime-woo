@@ -889,14 +889,14 @@ class WC_Order_ShipTime {
 			foreach ($shiptime_pkgs as $pkg) {
 				$item = new emergeit\LineItem();
 				$item->Length->UnitsType = 'IN';
-				$item->Length->Value = ceil(woocommerce_get_dimension($pkg['length'], 'in'));
+				$item->Length->Value = ceil(wc_get_dimension($pkg['length'], 'in'));
 				$item->Width->UnitsType = 'IN';
-				$item->Width->Value = ceil(woocommerce_get_dimension($pkg['width'], 'in'));
+				$item->Width->Value = ceil(wc_get_dimension($pkg['width'], 'in'));
 				$item->Height->UnitsType = 'IN';
-				$item->Height->Value = ceil(woocommerce_get_dimension($pkg['height'], 'in'));
+				$item->Height->Value = ceil(wc_get_dimension($pkg['height'], 'in'));
 				$item->Weight->UnitsType = 'LB';
 				// TODO: Support packages < 1 LB
-				$pkg_weight = woocommerce_get_weight($pkg['weight'], 'lbs');
+				$pkg_weight = wc_get_weight($pkg['weight'], 'lbs');
 				$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 
 				if ($order->shipping_country != $shiptime_auth->country) {
@@ -1293,14 +1293,14 @@ class WC_Order_ShipTime {
 			foreach ($shiptime_pkgs as $pkg) {
 				$item = new emergeit\LineItem();
 				$item->Length->UnitsType = 'IN';
-				$item->Length->Value = woocommerce_get_dimension($pkg['length'], 'in');
+				$item->Length->Value = wc_get_dimension($pkg['length'], 'in');
 				$item->Width->UnitsType = 'IN';
-				$item->Width->Value = woocommerce_get_dimension($pkg['width'], 'in');
+				$item->Width->Value = wc_get_dimension($pkg['width'], 'in');
 				$item->Height->UnitsType = 'IN';
-				$item->Height->Value = woocommerce_get_dimension($pkg['height'], 'in');
+				$item->Height->Value = wc_get_dimension($pkg['height'], 'in');
 				$item->Weight->UnitsType = 'LB';
 				// TODO: Support packages < 1 LB
-				$pkg_weight = woocommerce_get_weight($pkg['weight'], 'lbs');
+				$pkg_weight = wc_get_weight($pkg['weight'], 'lbs');
 				$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 
 				if (!$is_domestic) {
