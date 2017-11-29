@@ -48,7 +48,7 @@ class CurrencyUtil
 			// If PHP version < 5.5.0, or
 			// If cURL is not configured on this server or did not return a result
 			$res = file_get_contents($url);
-			if ($data !== false) {
+			if ($res !== false) {
 				preg_match($regex, $res, $matches);
 				$converted = preg_replace("/[^0-9.]/", "", $matches[1]);
 				return number_format(round($converted, 2), 2);
