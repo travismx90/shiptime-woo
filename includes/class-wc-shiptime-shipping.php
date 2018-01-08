@@ -337,21 +337,27 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 						continue;
 					}
 
+					// Get the Product WP_Post object
+					$postid = $values['product_id'];
+					$prod = get_post($postid);
+
 					// Populate Item Data
-					$postid = $values['data']->post->ID;
 					$item = array();
 					$item["id"] = $postid;
 					$item["sku"] = $values['data']->get_sku();
-					$item["name"] = $values['data']->post->post_name;
+					$item["name"] = $prod->post_name;
 					$item["quantity"] = $values['quantity'];
 					$item["value"] = $values['data']->get_price();
 					$item["weight"] = wc_get_weight($values['data']->get_weight(), 'lbs');
 					// If no weight set for product assume 1 lb
 					$item["weight"] = !empty($item["weight"]) ? $item["weight"] : 1;
-					if (!empty($values['data']->length) && !empty($values['data']->height) && !empty($values['data']->width)) {
-						$item["length"] = wc_get_dimension($values['data']->length, 'in');
-						$item["width"] = wc_get_dimension($values['data']->width, 'in');
-						$item["height"] = wc_get_dimension($values['data']->height, 'in');
+					$item["length"] = $values['data']->get_length();
+					$item["width"] = $values['data']->get_width();
+					$item["height"] = $values['data']->get_height();
+					if ($item["length"] && $item["width"] && $item["height"]) {
+						$item["length"] = wc_get_dimension($item["length"], 'in');
+						$item["width"] = wc_get_dimension($item["width"], 'in');
+						$item["height"] = wc_get_dimension($item["height"], 'in');
 					} else {
 						// If no L,W,H set for product assume 1x1x1 in
 						$item["length"] = 1;
@@ -417,7 +423,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 						$i->Origin = get_post_meta($item['id'], 'shiptime_origin_country', true);
 						$i->Quantity->Value = (int)$item['quantity'];
 						$i->UnitPrice->Amount = $item['value'];
-						$i->UnitPrice->CurrencyCode = get_woocommerce_currency();
+						$i->UnitPrice->CurrencyCode = $base_currency;
 
 						$req->CustomsInvoice->InvoiceItems[] = $i;
 					}
@@ -502,18 +508,25 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 						$pkg->setWidth(round(wc_get_dimension($pkg->getWidth(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
 						$pkg->setHeight(round(wc_get_dimension($pkg->getHeight(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
 					}
-					$wpdb->insert(
-						$wpdb->prefix.'shiptime_quote',
-						array(
-							'order_id' => 0,
-							'cart_sessid' => array_shift(array_keys($woocommerce->session->cart)),
-							'quote' => serialize($shipRates),
-							'packages' => serialize($packages)
-						),
-						array(
-							'%d', '%s', '%s', '%s'
-						)
-					);
+					if (!empty($woocommerce->session->cart)) {
+						$sessid = array_shift(array_keys($woocommerce->session->cart));
+					} else {
+						$sessid = array_shift(array_keys($woocommerce->cart->get_cart()));
+					}
+					if (isset($sessid)) {
+						$wpdb->insert(
+							$wpdb->prefix.'shiptime_quote',
+							array(
+								'order_id' => 0,
+								'cart_sessid' => $sessid,
+								'quote' => serialize($shipRates),
+								'packages' => serialize($packages)
+							),
+							array(
+								'%d', '%s', '%s', '%s'
+							)
+						);
+					}
 				}
 
 				if (isset($shipRates->AvailableRates)) {
@@ -544,14 +557,15 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 									$tax_charge += ($shipRate->TotalCharge->Amount-$shipRate->TotalBeforeTaxes->Amount)/100.00;
 									$cost = (($base_charge + $fuel_charge + $tax_charge) * $markup_percentage) + $accessorial_charge;
 								}
-								// API returns prices in CAD
-								// Convert, if necessary, to store currency
-								if (get_woocommerce_currency() != 'CAD') {
-									$cost = emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$cost);
+								// Compare API currency to Woo currency
+								$api_currency = $shipRate->BaseCharge->CurrencyCode;
+								// Convert to store currency if different than API currency
+								if ($base_currency != $api_currency) {
+									$cost = emergeit\CurrencyUtil::convert($api_currency, $base_currency, $cost);
 								}
 								// Add cost of "flat fee" items if applicable
 								if (!empty($ff_shipping) && is_numeric($ff_shipping)) {
-									$cost = number_format($cost+$ff_shipping, 2);
+									$cost = number_format($cost+$ff_shipping, 2, '.', '');
 								}
 							}
 							$rate = array(
@@ -577,7 +591,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					if (!empty($ff_shipping) && is_numeric($ff_shipping)) {
 						$svc = "FLATFEE";
 						$lbl = "Shipping Rate";
-						$cost = number_format($ff_shipping, 2);
+						$cost = number_format($ff_shipping, 2, '.', '');
 					}
 					$rate = array(
 						'id'    => $this->id . ':' . $svc,
@@ -648,6 +662,5 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		}
 		return $sh->package($boxes);
 	}
-
 
 }

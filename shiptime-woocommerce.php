@@ -3,11 +3,11 @@
 	Plugin Name: ShipTime for WooCommerce
 	Plugin URI: http://www.shiptime.com
 	Description: Real-time shipping rates, label printing, and shipment tracking for your WooCommerce orders.
-	Version: 1.0.0
+	Version: 0.0.16
 	Author: shiptime
 	Author URI: http://www.shiptime.com
 
-	Copyright: 2017 ShipTime
+	Copyright: 2018 ShipTime
 	License: GNU General Public License v3.0
 	License URI: http://www.gnu.org/licenses/gpl-3.0.html
 */
@@ -190,8 +190,8 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 					array( '%d' )
 				);
 			} catch (Exception $e) {
-				// Something went wrong, this function only runs
-				// during woocommerce_checkout_order_processed action
+				// Something went wrong...
+				// this function runs during woocommerce_checkout_order_processed action
 			}
 		}
 
@@ -215,13 +215,13 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			woocommerce_wp_select(
 				array(
 					'id' => 'shiptime_ship_method',
-					'label' => __('Shipping Method', 'wc_auctioninc'),
+					'label' => __('Shipping Method', 'wc_shiptime'),
 					'options' => array(
-						'' => __('-- Select -- ', 'wc_auctioninc'),
-						'C' => __('Carrier Rates', 'wc_auctioninc'),
-						'F' => __('Flat Fee', 'wc_auctioninc'),
-						'Z' => __('Free', 'wc_auctioninc'),
-						'D' => __('Free Domestic', 'wc_auctioninc')
+						'' => __('-- Select -- ', 'wc_shiptime'),
+						'C' => __('Carrier Rates', 'wc_shiptime'),
+						'F' => __('Flat Fee', 'wc_shiptime'),
+						'Z' => __('Free', 'wc_shiptime'),
+						'D' => __('Free Domestic', 'wc_shiptime')
 					),
 					'desc_tip' => 'true',
 					'description' => '(Optional) Select the shipping method to apply to this product. Default: Carrier Rates'

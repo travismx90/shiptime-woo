@@ -11,7 +11,7 @@
 class WC_ShipTime_Signup {
 
 	/**
-	 * Hook in tabs.
+	 * Hook in tabs
 	 */
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'admin_menus'  ) );
@@ -20,14 +20,14 @@ class WC_ShipTime_Signup {
 	}
 
 	/**
-	 * Add admin menus/screens.
+	 * Add admin menus/screens
 	 */
 	public function admin_menus() {
 		add_dashboard_page( '', '', 'manage_options', 'shiptime-signup', '' );
 	}
 
 	/**
-	 * Handle redirects to signup page after install.
+	 * Handle redirects to signup page after install
 	 */
 	public function shiptime_redirect() {
 		global $wpdb;
@@ -56,7 +56,7 @@ class WC_ShipTime_Signup {
 	}
 
 	/**
-	 * Show the start screen.
+	 * Show the start screen
 	 */
 	public function shiptime_signup() {
 		global $wpdb;
@@ -155,7 +155,7 @@ class WC_ShipTime_Signup {
 	}
 
 	/**
-	 * ShipTime Signup Form.
+	 * ShipTime Signup Form
 	 */
 	public function shiptime_signup_screen() {
 		$user_info = get_user_meta(get_current_user_id());
@@ -344,10 +344,10 @@ class WC_ShipTime_Signup {
 	}
 
 	/**
-	 * Save ShipTime Signup Form.
-	 * Make call to Signup API, Store API credentials for later use.
-	 * Upon success, redirect user to Dashboard.
-	 * Upon failure, validate form data.
+	 * Save ShipTime Signup Form
+	 * Make call to Signup API, Store API credentials for later use
+	 * Upon success, redirect user to Dashboard
+	 * Upon failure, validate form data
 	 */
 	public function shiptime_signup_screen_save() {
 		global $wpdb;
@@ -371,7 +371,7 @@ class WC_ShipTime_Signup {
 		$shiptime_state = sanitize_text_field($_POST['shiptime_state']);
 
 		if (!empty($shiptime_user)) {
-			// Current ShipTime Merchant: Store Info.
+			// Current ShipTime Merchant: Store Info
 			$shiptime_login = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 			$shiptime_login_id = empty($shiptime_login) ? 0 : $shiptime_login->id;
 			if (empty($shiptime_login_id)) {
@@ -487,7 +487,7 @@ class WC_ShipTime_Signup {
 	}
 
 	/**
-	 * ShipTime Already Signed Up.
+	 * ShipTime Already Signed Up
 	 */
 	public function shiptime_signedup_screen() {
 		?>

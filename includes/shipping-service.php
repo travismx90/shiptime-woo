@@ -288,7 +288,7 @@ class ShippingService {
 
 	public function isIntl() {
 		foreach ($this->destCountries as $ctry) {
-			if ($ctry != $this->homeCountry || $ctry == 'ALL') {
+			if ($ctry != $this->homeCountry) {
 				return true;
 			}
 		}

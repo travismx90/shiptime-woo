@@ -2,7 +2,7 @@
 /**
  * CurrencyUtil
  *
- * Converts values from API currency (CAD) to store currency when needed
+ * Converts values from API currency to store currency when different
  *
  * @author      travism
  * @version     1.0
@@ -13,7 +13,11 @@ class CurrencyUtil
 {
 	private static $baseUrl = 'finance.google.com';
 
-	public static function convert($from, $to, $val) {
+	public static function convert($from, $to, $val, $raw=false) {
+		if (empty($val))  { return $val; }
+		if ($from == $to) { return $val; }
+
+		$converted = 0;
 		$url = 'https://'.static::$baseUrl.'/finance/converter?a='.$val.'&from='.$from.'&to='.$to;
 		$regex = "/<span class=bld>(.*)<\/span>/";
 		
@@ -38,7 +42,6 @@ class CurrencyUtil
 					curl_close($req);
 					preg_match($regex, $res, $matches);
 					$converted = preg_replace("/[^0-9.]/", "", $matches[1]);
-					return number_format(round($converted, 2), 2);
 				}
 			}
 		}
@@ -48,20 +51,28 @@ class CurrencyUtil
 			// If PHP version < 5.5.0, or
 			// If cURL is not configured on this server or did not return a result
 			$res = file_get_contents($url);
-			if ($res !== false) {
+			if ($res) {
 				preg_match($regex, $res, $matches);
 				$converted = preg_replace("/[^0-9.]/", "", $matches[1]);
-				return number_format(round($converted, 2), 2);
 			}
 		}
 		
-		// Fallback: Cannot obtain a live conversion rate and must use saved value
+		// Fallback: Cannot obtain a live conversion rate; use saved value if found here
 		if ($from == 'CAD' && $to == 'USD') {
-			return number_format($val/1.275, 2);
+			$converted = $val/1.25;
 		} elseif ($from == 'CAD' && $to == 'EUR') {
-			return number_format($val/1.50, 2);	
+			$converted = $val/1.50;	
+		}
+
+		if ($raw) {
+			return $converted;
 		} else {
-			return $val;
+			return number_format(round($converted, 2), 2, '.', '');
 		}
 	}
+
+	public static function convFactor($from, $to) {
+		return static::convert($from, $to, 1.00, true);
+	}
+
 }

@@ -169,23 +169,27 @@ class WC_Order_ShipTime {
 			$this->shipping_meta = array();
 			$this->shiptime_data = array();
 
-			// Set ServiceName => ServiceId and ServiceId => CarrierName pairs
-			$shiptime_settings = get_option('woocommerce_shiptime_settings');
-			if ($shiptime_settings && array_key_exists('services', $shiptime_settings)) {
-				foreach ($shiptime_settings['services'] as $serviceId => $data) {
-					if ($data['enabled'] == 'on') {
-						$this->svc_carriers[$serviceId] = $data['carrier'];
-						if ($data['intl'] == '1') {
-							$this->shiptime_intl[$data['name']] = $serviceId;
-						} else {
-							$this->shiptime_domestic[$data['name']] = $serviceId;
+			$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
+			if (is_object($shiptime_auth)) {
+				// Set ServiceName => ServiceId and ServiceId => CarrierName pairs
+				$shiptime_settings = get_option('woocommerce_shiptime_settings');
+				if ($shiptime_settings && array_key_exists('services', $shiptime_settings)) {
+					foreach ($shiptime_settings['services'] as $serviceId => $data) {
+						if ($data['enabled'] == 'on') {
+							$this->svc_carriers[$serviceId] = $data['carrier'];
+							if ($data['intl'] == '1') {
+								$this->shiptime_intl[$data['name']] = $serviceId;
+							} else {
+								$this->shiptime_domestic[$data['name']] = $serviceId;
+								// exception: any services that can be either domestic/intl (e.g. FedEx Ground)
+								$sname = substr($data['name'], strlen($data['carrier'])+1);
+								$svc = new emergeit\ShippingService(0, $sname, 0, $data['carrier'], $shiptime_auth->country);
+								if ($svc->isIntl()) { $this->shiptime_intl[$data['name']] = $serviceId; }
+							}
 						}
 					}
 				}
-			}
 
-			$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
-			if (is_object($shiptime_auth)) {
 				$encUser = $shiptime_auth->username;
 				$encPass = $shiptime_auth->password;
 				$this->_ratingClient = new emergeit\RatingClient($encUser, $encPass);
@@ -211,7 +215,8 @@ class WC_Order_ShipTime {
 	}
 
 	function get_shipping_meta($shiptime_quote) {
-		global $wpdb;		
+		global $wpdb;
+		$shiptime_settings = get_option('woocommerce_shiptime_settings');
 		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 		$quotes = self::casttoclass('stdClass', unserialize($shiptime_quote->quote));
 		$service = $shiptime_quote->shipping_method;
@@ -224,8 +229,8 @@ class WC_Order_ShipTime {
 			);
 		} else {
 			foreach ($quotes->AvailableRates as $quote) {
-				$svc = new emergeit\ShippingService(0, $quote->ServiceName, 0, $quote->CarrierName, $shiptime_auth->country);
-				$lbl = $quote->CarrierName . ' ' . $svc->getDisplayName();
+				$dsp = $shiptime_settings['services'][$quote->ServiceId]['display_name'];
+				$lbl = $quote->CarrierName . ' ' . $dsp;
 				if ($lbl == $service) {
 					return array(
 						'ServiceName' => $service,
@@ -244,7 +249,6 @@ class WC_Order_ShipTime {
 	}
 
 	function add_shiptime_metabox() {
-
 		global $post;
 		global $wpdb;
 
@@ -252,6 +256,7 @@ class WC_Order_ShipTime {
 
 		$order = $this->get_wc_order($post->ID);
 		if ( !$order ) return;
+
 		$shiptime_quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE order_id=".$order->id." ORDER BY id DESC LIMIT 1");
 		if (is_object($shiptime_quote)) {
 			$this->shipping_meta = $this->get_shipping_meta($shiptime_quote);
@@ -291,9 +296,9 @@ class WC_Order_ShipTime {
 					'label_url' => serialize(array()),
 					'invoice_url' => serialize(array()),
 					'emergeit_id' => 1234,
-					'quoted_rate' => number_format($quoted_rate, 2),
-					'markup_rate' => number_format($current_rate, 2),
-					'taxes' => number_format($taxes, 2)
+					'quoted_rate' => number_format($quoted_rate, 2, '.', ''),
+					'markup_rate' => number_format($current_rate, 2, '.', ''),
+					'taxes' => number_format($taxes, 2, '.', '')
 				),
 				array(
 					'%d','%s','%s','%s','%s','%s','%s','%d','%f','%f','%f'
@@ -551,9 +556,6 @@ class WC_Order_ShipTime {
 			$order 					= $this->get_wc_order( $post->ID );
 			$shipping_method 		= $order->get_shipping_method();
 		} else {
-
-		?>
-			<?php
 			$href_url = admin_url( '/post.php?post='.$post->ID.'&action=edit&shiptime_track_shipment='.base64_encode( $post->ID ) );
 			if ($this->shiptime_data->emergeit_id == '1234') {
 				echo "No shipment has been created.";
@@ -613,10 +615,6 @@ class WC_Order_ShipTime {
 		} else {
 			// Carrier calculated shipping
 			$this->display_rate_details($quote);
-			if (get_woocommerce_currency() != 'CAD') {
-				echo "<br><em>Totals displayed in CAD</em><br>";
-				echo "Total (".get_woocommerce_currency()."): ".get_woocommerce_currency_symbol().emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$rate_info['total']);
-			}	
 		}
 	}
 
@@ -632,6 +630,15 @@ class WC_Order_ShipTime {
 		$r = array();
 
 		if (isset($quote)) {
+			// Compare API currency to Woo currency
+			$api_currency = $quote->BaseCharge->CurrencyCode;
+			$woo_currency = get_woocommerce_currency();
+			// If different, apply conversion factor to all proceeding values
+			$conv_factor = 1.00;
+			if ($woo_currency != $api_currency) {
+				$conv_factor = emergeit\CurrencyUtil::convFactor($api_currency, $woo_currency);
+			}
+
 			$shiptime_settings = get_option('woocommerce_shiptime_settings');
 			$services = $shiptime_settings['services'];
 
@@ -641,7 +648,7 @@ class WC_Order_ShipTime {
 			$markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage : 0;
 
 			$pre = get_woocommerce_currency_symbol();
-			$base = number_format($quote->BaseCharge->Amount/100.00,2);
+			$base = $quote->BaseCharge->Amount/100.00;
 			$fuel = $accessorial = 0.00;
 			if (is_array($quote->Surcharges)) {
 				foreach ($quote->Surcharges as $surcharge) {
@@ -652,13 +659,10 @@ class WC_Order_ShipTime {
 					}
 				}
 			}
-			$markup_fixed = number_format($markup_fixed,2);
-			$markup_percentage = number_format($markup_percentage,2);
-			$fuel = number_format($fuel,2);
-			$accessorial = number_format($accessorial,2);
-			$total_before_tax = number_format($quote->TotalBeforeTaxes->Amount/100.00,2);
-			$total_after_tax = number_format($quote->TotalCharge->Amount/100.00,2);
-			$taxes = number_format($total_after_tax-$total_before_tax,2);
+
+			$total_before_tax = $quote->TotalBeforeTaxes->Amount/100.00;
+			$total_after_tax = $quote->TotalCharge->Amount/100.00;
+			$taxes = $total_after_tax-$total_before_tax;
 			if (is_array($quote->Taxes)) {
 				foreach ($quote->Taxes as $tax) {
 					$tax_type = $tax->Name;
@@ -666,27 +670,25 @@ class WC_Order_ShipTime {
 				}
 			}
 
-			$r['details'] = "Base Charge: ".$pre.$base."<br>";
-			$r['details'] .= "Fuel Surcharge: ".$pre.$fuel."<br>";
-			$r['details'] .= "Other Surcharges: ".$pre.$accessorial."<br>";
+			$r['details']  = "Base Charge: ".$pre.number_format($base*$conv_factor, 2, '.', '')."<br>";
+			$r['details'] .= "Fuel Surcharge: ".$pre.number_format($fuel*$conv_factor, 2, '.', '')."<br>";
+			$r['details'] .= "Other Surcharges: ".$pre.number_format($accessorial*$conv_factor, 2, '.', '')."<br>";
 			if ($markup_fixed>0) {
-				$r['details'] .= "Fixed Markup: ".$pre.$markup_fixed."<br>";
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(($total_before_tax+$markup_fixed),2)."<br>";
-				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.$taxes."<br>"; }
-				$total = number_format(($total_after_tax+$markup_fixed),2);
-				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
+				$r['details'] .= "Fixed Markup: ".$pre.number_format($markup_fixed, 2, '.', '')."<br>";
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(($total_before_tax*$conv_factor)+$markup_fixed, 2, '.', '')."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes*$conv_factor, 2, '.', '')."<br>"; }
+				$total = number_format(($total_after_tax*$conv_factor)+$markup_fixed, 2, '.', '');
 			} elseif ($markup_percentage>0) {
 				$r['details'] .= "Percentage Markup: ".$markup_percentage."%<br>";
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00,2)."<br>";
-				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$taxes*(1+$markup_percentage/100.00))/100.00,2)."<br>"; }
-				$total = number_format(ceil(100*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00,2);
-				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*$conv_factor*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$conv_factor*$taxes*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>"; }
+				$total = number_format(ceil(100*$conv_factor*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00, 2, '.', '');
 			} else {
-				$r['details'] .= "Total (w/o taxes): ".$pre.$total_before_tax."<br>";
-				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.$taxes."<br>"; }
-				$total = $total_after_tax;
-				$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format($total_before_tax*$conv_factor, 2, '.', '')."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes*$conv_factor, 2, '.', '')."<br>"; }
+				$total = number_format($total_after_tax*$conv_factor, 2, '.', '');
 			}
+			$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
 
 			$r['total'] = $total;
 		}
@@ -1367,10 +1369,6 @@ class WC_Order_ShipTime {
 							$rate_info = $this->shiptime_rate_details($shipRate);
 							if (array_key_exists('total', $rate_info) && array_key_exists('details', $rate_info)) {
 								$msg = '<strong>'.$shipRate->CarrierName.' '.$svc->getDisplayName().'</strong><br>'.$rate_info['details'];
-								if (get_woocommerce_currency() != 'CAD') {
-									$msg .= "<br><em>Totals displayed in CAD</em><br>";
-									$msg .= "Total (".get_woocommerce_currency()."): ".get_woocommerce_currency_symbol().emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$rate_info['total']);
-								}	
 								$new_rate = $rate_info['total'];
 							}
 							break;
@@ -1399,11 +1397,6 @@ class WC_Order_ShipTime {
 				} else {
 					$current_rate = (float)preg_replace('/&.*?;/', '', strip_tags($current_rate));
 					$new_rate = (float)preg_replace('/&.*?;/', '', strip_tags($new_rate));
-					// API returns prices in CAD
-					// Convert, if necessary, to store currency
-					if (get_woocommerce_currency() != 'CAD') {
-						$new_rate = emergeit\CurrencyUtil::convert('CAD',get_woocommerce_currency(),$new_rate);
-					}
 					if ($new_rate == $current_rate) {
 						$recalc = "<span style='padding:5px;display:block;background-color:#efefef;color:#444'>Shipping rate for this order recalculated to be the same as the rate your customer paid.</span>";
 					} elseif ($new_rate > $current_rate) {
@@ -1416,7 +1409,7 @@ class WC_Order_ShipTime {
 						"{$wpdb->prefix}shiptime_order",
 						array(
 							'recalc' => $recalc,
-							'recalc_rate' => number_format($new_rate, 2)
+							'recalc_rate' => number_format($new_rate, 2, '.', '')
 						),
 						array( 'post_id' => $id ),
 						array(
