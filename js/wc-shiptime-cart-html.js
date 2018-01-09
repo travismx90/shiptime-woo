@@ -1,5 +1,7 @@
 jQuery(document).ready(function($) {
 
-	$("<tr class='shiptime-info'><td colspan='2'><p>*[#] = Estimated Number of Business Days for Delivery</p></td></tr>").insertAfter(".shipping");
+	//$("<div class='shiptime_debug'></div>").insertBefore(".cart-collaterals");
+
+	$("<p style='text-align: center'>*[#] = Estimated Number of Business Days for Delivery</p>").insertAfter(".cart-collaterals");
 
 });

@@ -34,7 +34,9 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			add_action('woocommerce_shipping_init', array($this, 'shipping_init'));
 			add_filter('woocommerce_shipping_methods', array($this, 'add_shipping_method'));
 			add_action('woocommerce_cart_collaterals', array($this, 'wc_shiptime_cart_css'));
-			add_action('woocommerce_cart_collaterals', array($this, 'wc_shiptime_cart_js'));
+			add_action('woocommerce_before_cart_contents', array($this, 'wc_shiptime_debug_output1'));
+			add_action('woocommerce_after_cart_contents', array($this, 'wc_shiptime_cart_js'));
+			add_filter('woocommerce_add_to_cart_fragments', array($this, 'wc_shiptime_debug_output2'));
 			add_action('woocommerce_checkout_order_processed', array($this, 'save_shipping_details'));
 			add_action('woocommerce_product_options_shipping', array($this, 'add_product_fields'));
 			add_action('woocommerce_process_product_meta', array($this, 'save_product_fields'));
@@ -104,6 +106,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 				shipping_method varchar(255) DEFAULT '' NOT NULL,
 				quote text NOT NULL,
 				packages text NOT NULL,
+				debug text NOT NULL,
 				UNIQUE KEY id (id)
 			) $charset_collate;";
 			dbDelta( $sql );
@@ -195,16 +198,47 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			}
 		}
 
-		// Change to Cart page
+		// Add CSS to Cart page
 		public function wc_shiptime_cart_css() {
 			// Widen cart totals div so each shipping ServiceName fits on a single line
-			echo '<style>.woocommerce .cart-collaterals .cart_totals { width: 70%; }</style>';
+			echo '<style>
+			.woocommerce .cart-collaterals .cart_totals { width: 70%; }
+			.wc-proceed-to-checkout, .wc-proceed-to-checkout .button { margin-bottom: 0.5em; }
+			.shiptime_debug pre { font-size: 0.9em;line-height: 1em; }
+			</style>';
 		}
 
-		// Change to Cart page
+		// Add JS to Cart page
 		public function wc_shiptime_cart_js() {
-			// Add HTML below shipping rates
+			// Add HTML for Estimated Delivery below shipping rates
 			wp_enqueue_script('shiptime-cart', plugins_url('js/wc-shiptime-cart-html.js', __FILE__), array('jquery'), null, true);
+		}
+
+		// Add Debug Mode Output to Cart page - Scenario 1: Initial page load
+		public function wc_shiptime_debug_output1() {
+			global $woocommerce;
+			global $wpdb;
+			$cart_sessid = array_shift(array_keys($woocommerce->session->cart));
+			$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");			
+			// Add HTML for Debug Mode above shipping rates
+			wp_enqueue_script('shiptime-debug', plugins_url('js/wc-shiptime-debug-html.js', __FILE__), array('jquery'), null, true);
+			$data = array(
+				'debug' => $quote->debug
+			);
+			wp_localize_script('shiptime-debug', 'php_vars', $data);
+		}
+
+		// Add Debug Mode Output to Cart page - Scenario 2: AJAX; Add data to cart fragments
+		public function wc_shiptime_debug_output2($fragments) {
+			global $woocommerce;
+			global $wpdb;
+			$cart_sessid = array_shift(array_keys($woocommerce->session->cart));
+			$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");			
+			// Add HTML for Debug Mode above shipping rates
+			$fragments['div.shiptime_debug'] = '<div class="shiptime_debug">'.$quote->debug.'</div>';
+			// Add back HTML for Estimated Delivery below shipping rates
+			$fragments['tr.shiptime_info'] = '<tr class="shiptime_info"><td colspan="2"><p>*[#] = Estimated Number of Business Days for Delivery</p></td></tr>';
+			return $fragments;
 		}
 
 		// Add product-level shipping fields

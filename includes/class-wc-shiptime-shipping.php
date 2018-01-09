@@ -94,7 +94,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 				'label' => 'Enable debug mode',
 				'type' => 'checkbox',
 				'default' => 'no',
-				'description' => 'Enable debug mode to show debugging data for ship rates in your cart. Only you, not your customers, can view this debug data.'
+				'description' => 'Enable debug mode to show debugging data on the Cart page above the Cart totals. Only WordPress administrators, not your customers, can view this debug data.'
 			),
 			'turnaround_days' => array(
 				'title' => 'Turnaround Days',
@@ -279,6 +279,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		$base_currency = get_woocommerce_currency();
 
 		// Must be WP admin to see Debug output
+		$debug_output = '';
 		$is_admin = (!empty($current_user->roles) && in_array('administrator', $current_user->roles)) ? true : false;
 
 		if (is_object($this->shiptime_auth)) {
@@ -431,13 +432,6 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					unset($req->CustomsInvoice);
 				}
 
-				// Debug output
-				if ($this->debug && $is_admin === true) {
-						echo 'DEBUG ITEM DATA<br>';
-						echo '<pre>' . print_r($items, true) . '</pre>';
-						echo 'END DEBUG ITEM DATA<br>';
-				}
-
 				// Convert Items array to Packages array
 				$packages = $this->pkg($items, true);
 
@@ -457,6 +451,13 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					$item->Description = 'Item Line Description';
 
 					$req->ShipmentItems[] = $item;
+				}
+
+				// Debug output - ShipTime API Request
+				if ($this->debug && $is_admin === true) {
+					$debug_output .= 'DEBUG API REQUEST: SHIP RATES<br>';
+					$debug_output .= '<pre>' . print_r($req, true) . '</pre>';
+					$debug_output .= 'END DEBUG API REQUEST: SHIP RATES<br>';					
 				}
 
 				// Unique identifier for cart items & destiniation
@@ -487,11 +488,11 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					}
 				}
 
-				// Debug output
+				// Debug output - ShipTime API Response
 				if ($this->debug && $is_admin === true) {
-					echo 'DEBUG API RESPONSE: SHIP RATES<br>';
-					echo '<pre>' . print_r($shipRates, true) . '</pre>';
-					echo 'END DEBUG API RESPONSE: SHIP RATES<br>';
+					$debug_output .= 'DEBUG API RESPONSE: SHIP RATES<br>';
+					$debug_output .= '<pre>' . print_r($shipRates, true) . '</pre>';
+					$debug_output .= 'END DEBUG API RESPONSE: SHIP RATES<br>';
 				}
 
 				// Store response into DB
@@ -520,10 +521,11 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 								'order_id' => 0,
 								'cart_sessid' => $sessid,
 								'quote' => serialize($shipRates),
-								'packages' => serialize($packages)
+								'packages' => serialize($packages),
+								'debug' => $debug_output
 							),
 							array(
-								'%d', '%s', '%s', '%s'
+								'%d', '%s', '%s', '%s', '%s'
 							)
 						);
 					}
