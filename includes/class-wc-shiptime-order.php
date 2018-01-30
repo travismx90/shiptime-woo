@@ -630,6 +630,8 @@ class WC_Order_ShipTime {
 			// Compare API currency to Woo currency
 			$api_currency = $quote->BaseCharge->CurrencyCode;
 			$woo_currency = get_woocommerce_currency();
+			if (empty($api_currency)) { $api_currency = $woo_currency; } // Free/Flat-rate only
+
 			// If different, apply conversion factor to all proceeding values
 			$conv_factor = 1.00;
 			if ($woo_currency != $api_currency) {
