@@ -337,8 +337,7 @@ class WC_Order_ShipTime {
 			echo '<ul><li class="wide"><select class="select" name="shiptime_shipping_method" id="shiptime_shipping_method">';
 			foreach ($this->shipping_services as $svcName => $svcCode) {
 				$disp_name = $this->svc_carriers[$svcCode].' '.$shiptime_settings['services'][$svcCode]['display_name'];
-				$opt_value = $shiptime_settings['services'][$svcCode]['name'];
-				echo '<option value="'.$opt_value.'" ' . selected($shipping_method, $disp_name) . ' >'.$disp_name.'</option>';
+				echo '<option value="'.$svcName.'" ' . selected($shipping_method, $disp_name) . ' >'.$disp_name.'</option>';
 			}
 			echo '</select></li>';
 			if($order->get_shipping_country() != $shiptime_auth->country) {
