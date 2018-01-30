@@ -28,15 +28,15 @@ class WC_Order_ShipTime {
 	
 	private $shiptime_carriers = array();
 	private $carrier_list = array(
-		'FedEx' => FEDEX_TRACKING,
-		'DHL INTL' => DHL_TRACKING,
-		'Canpar' => CANPAR_TRACKING,
-		'Canada Post' => CANPOST_TRACKING,
-		'Purolator' => PURO_TRACKING,
-		'Dicom' => DICOM_TRACKING,
-		'Loomis' => LOOMIS_TRACKING,
-		'UPS' => UPS_TRACKING,
-		'USPS' => USPS_TRACKING
+		'FedEx' => self::FEDEX_TRACKING,
+		'DHL INTL' => self::DHL_TRACKING,
+		'Canpar' => self::CANPAR_TRACKING,
+		'Canada Post' => self::CANPOST_TRACKING,
+		'Purolator' => self::PURO_TRACKING,
+		'Dicom' => self::DICOM_TRACKING,
+		'Loomis' => self::LOOMIS_TRACKING,
+		'UPS' => self::UPS_TRACKING,
+		'USPS' => self::USPS_TRACKING
 	);
 
 	private $shiptime_domestic = array();
@@ -257,7 +257,7 @@ class WC_Order_ShipTime {
 		$order = $this->get_wc_order($post->ID);
 		if ( !$order ) return;
 
-		$shiptime_quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE order_id=".$order->id." ORDER BY id DESC LIMIT 1");
+		$shiptime_quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE order_id=".$order->get_order_number()." ORDER BY id DESC LIMIT 1");
 		if (is_object($shiptime_quote)) {
 			$this->shipping_meta = $this->get_shipping_meta($shiptime_quote);
 		}
@@ -278,7 +278,7 @@ class WC_Order_ShipTime {
 				$box_codes[] = self::find_box_by_dims($pkg->Length, $pkg->Width, $pkg->Height);
 			}
 
-			$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_order_currency()));
+			$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_currency()));
 			$current_rate = (float)preg_replace('/&.*?;/', '', strip_tags($current_rate));
 
 			$quoted_rate = $this->shipping_meta['Quote']->TotalBeforeTaxes->Amount/100.00;
@@ -321,6 +321,7 @@ class WC_Order_ShipTime {
 		$shipmentId = '';
 
 		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
+		$shiptime_settings = get_option('woocommerce_shiptime_settings');
 
 		if(!isset($this->shiptime_data->emergeit_id) || $this->shiptime_data->emergeit_id == '1234') {
 			$href_url 				= admin_url( '/post.php?post='.$post->ID.'&action=edit&shiptime_place_shipment='.base64_encode( $post->ID ) );
@@ -330,18 +331,17 @@ class WC_Order_ShipTime {
 			<strong>Select Shipping Service:</strong>
 		<?php
 			$this->shipping_services = $this->shiptime_domestic;
-			if($order->shipping_country != $shiptime_auth->country) {
+			if($order->get_shipping_country() != $shiptime_auth->country) {
 				$this->shipping_services = $this->shiptime_intl;
 			}
 			echo '<ul><li class="wide"><select class="select" name="shiptime_shipping_method" id="shiptime_shipping_method">';
-			foreach($this->shipping_services as $service_name => $service_code) {
-				$cname = $this->svc_carriers[$service_code];
-				$sname = substr($service_name, strlen($cname)+1);
-				$svc = new emergeit\ShippingService(0, $sname, 0, $cname, $shiptime_auth->country);
-				echo '<option value="'.$service_name.'" ' . selected($shipping_method, $svc->getFullName()) . ' >'.$cname.' '.$svc->getDisplayName().'</option>';
+			foreach ($this->shipping_services as $svcName => $svcCode) {
+				$disp_name = $this->svc_carriers[$svcCode].' '.$shiptime_settings['services'][$svcCode]['display_name'];
+				$opt_value = $shiptime_settings['services'][$svcCode]['name'];
+				echo '<option value="'.$opt_value.'" ' . selected($shipping_method, $disp_name) . ' >'.$disp_name.'</option>';
 			}
 			echo '</select></li>';
-			if($order->shipping_country != $shiptime_auth->country) {
+			if($order->get_shipping_country() != $shiptime_auth->country) {
 				echo '<strong>Who will pay duties/taxes?</strong>';
 				echo '<li class="wide"><select class="select" name="shiptime_selection" id="shiptime_selection">';
 				echo '<option value="SHIPPER" selected>SHIPPER</option>';
@@ -371,7 +371,6 @@ class WC_Order_ShipTime {
 						<h2>Select Box Configuration for Shipment</h2>
 						<p>
 							<?php
-							$shiptime_settings = get_option('woocommerce_shiptime_settings');
 							$weight_uom = strtoupper(get_option( 'woocommerce_weight_unit' ));
 							$dim_uom = strtoupper(get_option( 'woocommerce_dimension_unit' ));
 							foreach ($shiptime_settings['boxes'] as $box) {
@@ -469,7 +468,6 @@ class WC_Order_ShipTime {
 				<h2>Select Box Configuration for Shipment</h2>
 				<p>
 					<?php
-					$shiptime_settings = get_option('woocommerce_shiptime_settings');
 					$weight_uom = strtoupper(get_option( 'woocommerce_weight_unit' ));
 					$dim_uom = strtoupper(get_option( 'woocommerce_dimension_unit' ));
 					foreach ($shiptime_settings['boxes'] as $box) {
@@ -587,7 +585,7 @@ class WC_Order_ShipTime {
 				?>
 				<br>
 				<a class="button button-primary tips" href="<?php echo $href_url; ?>" data-tip="Track Current Shipment">Track Shipment</a>
-				<?php if ($order->shipping_country != $shiptime_auth->country) { ?>
+				<?php if ($order->get_shipping_country() != $shiptime_auth->country) { ?>
 				<a target="_new" class="button button-primary tips" href="<?php echo $this->shiptime_data->label_url; ?>" data-tip="Print Shipping Label(s)">Print Label</a>
 				<?php } else { ?>
 				<br><br>
@@ -837,7 +835,7 @@ class WC_Order_ShipTime {
 					$req->CarrierId = $cid;
 				}
 			}
-			if ($order->shipping_country != $shiptime_auth->country) {
+			if ($order->get_shipping_country() != $shiptime_auth->country) {
 				$req->ServiceId = $this->shiptime_intl[$shiptime_data->shipping_service];
 			} else {
 				$req->ServiceId = $this->shiptime_domestic[$shiptime_data->shipping_service];
@@ -901,7 +899,7 @@ class WC_Order_ShipTime {
 				$pkg_weight = wc_get_weight($pkg['weight'], 'lbs');
 				$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 
-				if ($order->shipping_country != $shiptime_auth->country) {
+				if ($order->get_shipping_country() != $shiptime_auth->country) {
 					$desc = array();
 					foreach ( $order->get_items( array( 'line_item' ) ) as $iid => $data ) {
 						$product = $order->get_product_from_item( $data );
@@ -914,7 +912,7 @@ class WC_Order_ShipTime {
 			}
 			$req->DeferredProcessing = false;
 
-			if ($order->shipping_country != $shiptime_auth->country) {
+			if ($order->get_shipping_country() != $shiptime_auth->country) {
 				// Int'l shipments - Customs Invoice
 				$dt = new emergeit\DutiesAndTaxes();
 				$dt->Dutiable = true;
@@ -926,7 +924,7 @@ class WC_Order_ShipTime {
 				$ic = new emergeit\InvoiceContact();
 				$ic->City = ucwords($bill_addr['city']);
 				$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : 'NA';
-				$ic->CountryCode = $order->shipping_country;
+				$ic->CountryCode = $order->get_shipping_country();
 				$ic->Email = $bill_addr['email'];
 				$ic->Phone = $bill_addr['phone'];
 				$ic->PostalCode = $bill_addr['postcode'];
@@ -1290,7 +1288,7 @@ class WC_Order_ShipTime {
 			$req->To->Residential = false;
 
 			$req->PackageType = 'PACKAGE';
-			$is_domestic = ($order->shipping_country == $shiptime_auth->country);
+			$is_domestic = ($order->get_shipping_country() == $shiptime_auth->country);
 
 			foreach ($shiptime_pkgs as $pkg) {
 				$item = new emergeit\LineItem();
@@ -1329,7 +1327,7 @@ class WC_Order_ShipTime {
 				$ic = new emergeit\InvoiceContact();
 				$ic->City = ucwords($bill_addr['city']);
 				$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : 'NA';
-				$ic->CountryCode = $order->shipping_country;
+				$ic->CountryCode = $order->get_shipping_country();
 				$ic->Email = $bill_addr['email'];
 				$ic->Phone = $bill_addr['phone'];
 				$ic->PostalCode = $bill_addr['postcode'];
@@ -1365,7 +1363,7 @@ class WC_Order_ShipTime {
 					foreach ($shipRates->AvailableRates as $shipRate) {
 						$svc = new emergeit\ShippingService(0, $shipRate->ServiceName, 0, $shipRate->CarrierName, $shiptime_auth->country);
 						if ($svc->getFullName() == sanitize_text_field($_GET['shiptime_shipping_method'])) {
-							$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_order_currency()));
+							$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_currency()));
 							$rate_info = $this->shiptime_rate_details($shipRate);
 							if (array_key_exists('total', $rate_info) && array_key_exists('details', $rate_info)) {
 								$msg = '<strong>'.$shipRate->CarrierName.' '.$svc->getDisplayName().'</strong><br>'.$rate_info['details'];
