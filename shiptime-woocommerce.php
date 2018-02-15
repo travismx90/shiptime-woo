@@ -3,10 +3,11 @@
 	Plugin Name: ShipTime for WooCommerce
 	Plugin URI: http://www.shiptime.com
 	Description: Real-time shipping rates, label printing, and shipment tracking for your WooCommerce orders.
-	Version: 0.0.16
+	Version: 0.0.17
 	Author: shiptime
 	Author URI: http://www.shiptime.com
-
+	WC requires at least: 3.0.0
+	WC tested up to: 3.3.0
 	Copyright: 2018 ShipTime
 	License: GNU General Public License v3.0
 	License URI: http://www.gnu.org/licenses/gpl-3.0.html
