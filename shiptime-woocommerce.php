@@ -308,10 +308,10 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 				array(
 					'id' => 'shiptime_hs_code',
 					'label' => 'HS Code',
-					'placeholder' => '2711.12',
+					'placeholder' => '000000',
 					'type' => 'text',
 					'desc_tip' => 'true',
-					'description' => 'Must be 6 or 10 digits, with or without periods.'
+					'description' => 'Must be 6 or 10 digits'
 				)
 			);
 			echo '<p><a href="https://www.canadapost.ca/cpotools/apps/wtz/business/findHsCode?execution=e1s1" target="_blank">HS Code Search</a></p>';
@@ -358,7 +358,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 			// HS Code
 			$shiptime_hs_code = $_POST['shiptime_hs_code'];
-			if (!empty($shiptime_hs_code) && strlen($shiptime_hs_code) <= 20) {
+			if (is_numeric($shiptime_hs_code) && (strlen($shiptime_hs_code) == 6 || strlen($shiptime_hs_code) == 10)) {
 				update_post_meta($post_id, 'shiptime_hs_code', esc_attr($shiptime_hs_code));
 			}
 			else {
