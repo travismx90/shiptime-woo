@@ -559,12 +559,6 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 									$tax_charge += ($shipRate->TotalCharge->Amount-$shipRate->TotalBeforeTaxes->Amount)/100.00;
 									$cost = (($base_charge + $fuel_charge + $tax_charge) * $markup_percentage) + $accessorial_charge;
 								}
-								// Compare API currency to Woo currency
-								$api_currency = $shipRate->BaseCharge->CurrencyCode;
-								// Convert to store currency if different than API currency
-								if ($base_currency != $api_currency) {
-									$cost = emergeit\CurrencyUtil::convert($api_currency, $base_currency, $cost);
-								}
 								// Add cost of "flat fee" items if applicable
 								if (!empty($ff_shipping) && is_numeric($ff_shipping)) {
 									$cost = number_format($cost+$ff_shipping, 2, '.', '');

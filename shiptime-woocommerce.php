@@ -1,16 +1,18 @@
 <?php
 /*
-	Plugin Name: ShipTime for WooCommerce
-	Plugin URI: http://www.shiptime.com
-	Description: Real-time shipping rates, label printing, and shipment tracking for your WooCommerce orders.
-	Version: 0.0.17
-	Author: shiptime
-	Author URI: http://www.shiptime.com
-	WC requires at least: 3.0.0
-	WC tested up to: 3.3.0
-	Copyright: 2018 ShipTime
-	License: GNU General Public License v3.0
-	License URI: http://www.gnu.org/licenses/gpl-3.0.html
+ *  Plugin Name: ShipTime for WooCommerce
+ *  Plugin URI: http://www.shiptime.com
+ *  Description: Real-time shipping rates, label printing, and shipment tracking for your WooCommerce orders.
+ *  Version: 0.0.18
+ *  Author: shiptime
+ *  Author URI: http://www.shiptime.com
+ *  
+ *  WC requires at least: 3.0.0
+ *	WC tested up to: 3.3.0
+ *	
+ *  Copyright: © 2018 ShipTime
+ *  License: GNU General Public License v3.0
+ *  License URI: http://www.gnu.org/licenses/gpl-3.0.html
 */
 if (!defined('ABSPATH')) {
 	exit;
@@ -159,7 +161,6 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			require_once ('includes/shipment.php');
 			// Helper & Utility classes
 			require_once ('includes/shipping-service.php');
-			require_once ('utils/CurrencyUtil.php');
 			// Main class responsible for generating shipping rates
 			require_once ('includes/class-wc-shiptime-shipping.php');
 		}

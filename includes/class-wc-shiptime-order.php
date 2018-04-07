@@ -10,7 +10,6 @@
 require_once(dirname(__FILE__).'/../connector/RatingClient.php');
 require_once(dirname(__FILE__).'/../connector/ShippingClient.php');
 require_once(dirname(__FILE__).'/../connector/SignupClient.php');
-require_once(dirname(__FILE__).'/../utils/CurrencyUtil.php');
 require_once(dirname(__FILE__).'/../includes/shipping-service.php');
 
 class WC_Order_ShipTime {
@@ -627,17 +626,6 @@ class WC_Order_ShipTime {
 		$r = array();
 
 		if (isset($quote)) {
-			// Compare API currency to Woo currency
-			$api_currency = $quote->BaseCharge->CurrencyCode;
-			$woo_currency = get_woocommerce_currency();
-			if (empty($api_currency)) { $api_currency = $woo_currency; } // Free/Flat-rate only
-
-			// If different, apply conversion factor to all proceeding values
-			$conv_factor = 1.00;
-			if ($woo_currency != $api_currency) {
-				$conv_factor = emergeit\CurrencyUtil::convFactor($api_currency, $woo_currency);
-			}
-
 			$shiptime_settings = get_option('woocommerce_shiptime_settings');
 			$services = $shiptime_settings['services'];
 
@@ -669,23 +657,23 @@ class WC_Order_ShipTime {
 				}
 			}
 
-			$r['details']  = "Base Charge: ".$pre.number_format($base*$conv_factor, 2, '.', '')."<br>";
-			$r['details'] .= "Fuel Surcharge: ".$pre.number_format($fuel*$conv_factor, 2, '.', '')."<br>";
-			$r['details'] .= "Other Surcharges: ".$pre.number_format($accessorial*$conv_factor, 2, '.', '')."<br>";
+			$r['details']  = "Base Charge: ".$pre.number_format($base, 2, '.', '')."<br>";
+			$r['details'] .= "Fuel Surcharge: ".$pre.number_format($fuel, 2, '.', '')."<br>";
+			$r['details'] .= "Other Surcharges: ".$pre.number_format($accessorial, 2, '.', '')."<br>";
 			if ($markup_fixed>0) {
 				$r['details'] .= "Fixed Markup: ".$pre.number_format($markup_fixed, 2, '.', '')."<br>";
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(($total_before_tax*$conv_factor)+$markup_fixed, 2, '.', '')."<br>";
-				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes*$conv_factor, 2, '.', '')."<br>"; }
-				$total = number_format(($total_after_tax*$conv_factor)+$markup_fixed, 2, '.', '');
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format($total_before_tax+$markup_fixed, 2, '.', '')."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes, 2, '.', '')."<br>"; }
+				$total = number_format($total_after_tax+$markup_fixed, 2, '.', '');
 			} elseif ($markup_percentage>0) {
 				$r['details'] .= "Percentage Markup: ".$markup_percentage."%<br>";
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*$conv_factor*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>";
-				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$conv_factor*$taxes*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>"; }
-				$total = number_format(ceil(100*$conv_factor*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00, 2, '.', '');
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$taxes*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>"; }
+				$total = number_format(ceil(100*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00, 2, '.', '');
 			} else {
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format($total_before_tax*$conv_factor, 2, '.', '')."<br>";
-				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes*$conv_factor, 2, '.', '')."<br>"; }
-				$total = number_format($total_after_tax*$conv_factor, 2, '.', '');
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format($total_before_tax, 2, '.', '')."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes, 2, '.', '')."<br>"; }
+				$total = number_format($total_after_tax, 2, '.', '');
 			}
 			$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
 
