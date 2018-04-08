@@ -226,16 +226,20 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 		// Add Debug Mode Output to Cart page - Scenario 1: Initial page load
 		public function wc_shiptime_debug_output1() {
+			global $current_user;
 			global $woocommerce;
 			global $wpdb;
-			$cart_sessid = array_shift(array_keys($woocommerce->session->cart));
-			$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");			
-			// Add HTML for Debug Mode above shipping rates
-			wp_enqueue_script('shiptime-debug', plugins_url('js/wc-shiptime-debug-html.js', __FILE__), array('jquery'), null, true);
-			$data = array(
-				'debug' => $quote->debug
-			);
-			wp_localize_script('shiptime-debug', 'php_vars', $data);
+			$is_admin = (!empty($current_user->roles) && in_array('administrator', $current_user->roles)) ? true : false;
+			if ($is_admin) {
+				$cart_sessid = array_shift(array_keys($woocommerce->session->cart));
+				$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");			
+				// Add HTML for Debug Mode above shipping rates
+				wp_enqueue_script('shiptime-debug', plugins_url('js/wc-shiptime-debug-html.js', __FILE__), array('jquery'), null, true);
+				$data = array(
+					'debug' => $quote->debug
+				);
+				wp_localize_script('shiptime-debug', 'php_vars', $data);
+			}
 		}
 
 		// Add Debug Mode Output to Cart page - Scenario 2: AJAX; Add data to cart fragments

@@ -283,20 +283,20 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		$is_admin = (!empty($current_user->roles) && in_array('administrator', $current_user->roles)) ? true : false;
 
 		if (is_object($this->shiptime_auth)) {
-			// Calculate if shipping fields are set
-			if (!empty($package['destination']['country'])) {
+			// Calculate if required shipping fields are set
+			if (!empty($package['destination']['country']) && !empty($package['destination']['postcode']) && 
+				!empty($package['destination']['state']) && !empty($package['destination']['address'])) {
+				
 				$dest_country = $package['destination']['country'];
-				$dest_postcode = !empty($package['destination']['postcode']) ? $package['destination']['postcode'] : '';
-				$dest_state = !empty($package['destination']['state']) ? $package['destination']['state'] : '';
-
-				// Check if customer has set required destination info
-				if ( ( ($dest_country == 'US' || $dest_country == 'CA') && empty($dest_postcode) ) ) {
-					return;
-				}
+				$dest_state = $package['destination']['state'];
+				$dest_city = !empty($package['destination']['city']) ? $package['destination']['city'] : '-';
+				$dest_postcode = $package['destination']['postcode'];
+				$dest_addr = $package['destination']['address'] . 
+					(!empty($package['destination']['address_2']) ? $package['destination']['address_2'] : '');
 
 				// Create the XML request
 				$req = new emergeit\GetRatesRequest();
-				$req->From->Attention = ucwords($this->shiptime_auth->first_name) . ' ' . ucwords($this->shiptime_auth->last_name);
+				$req->From->Attention = ucwords($this->shiptime_auth->first_name.' '.$this->shiptime_auth->last_name);
 				$req->From->Phone = $this->shiptime_auth->phone;
 				$req->From->CompanyName = $this->shiptime_auth->company;
 				$req->From->StreetAddress = ucwords($this->shiptime_auth->address);
@@ -309,12 +309,12 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 
 				$req->To->Attention = 'John Smith';
 				$req->To->Phone = '5555555555';
-				$req->To->CompanyName = 'Test Company';
-				$req->To->StreetAddress = '1 Main St';
+				$req->To->CompanyName = 'Example Company';
+				$req->To->StreetAddress = $dest_addr;
 				$req->To->CountryCode = $dest_country;
 				$req->To->PostalCode = $dest_postcode;
 				$req->To->Province = $dest_state;
-				$req->To->City = ''; // lookup handled by API
+				$req->To->City = ''; // lookup handled by ShipTime API
 				$req->To->Notify = false;
 				$req->To->Residential = false;
 
@@ -403,14 +403,14 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					$req->CustomsInvoice->DutiesAndTaxes = $dt;
 
 					$ic = new emergeit\InvoiceContact();
-					$ic->City = '-';
-					$ic->CompanyName = '-';
+					$ic->City = $dest_city;
+					$ic->CompanyName = 'Example Company';
 					$ic->CountryCode = $dest_country;
 					$ic->Email = '-';
-					$ic->Phone = '-';
+					$ic->Phone = '5555555555';
 					$ic->PostalCode = $dest_postcode;
 					$ic->Province = $dest_state;
-					$ic->StreetAddress = '1 Main St';
+					$ic->StreetAddress = $dest_addr;
 					$ic->CustomsBroker = '-';
 					$ic->ShipperTaxId = '-';
 					$req->CustomsInvoice->InvoiceContact = $ic;
@@ -455,9 +455,9 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 
 				// Debug output - ShipTime API Request
 				if ($this->debug && $is_admin === true) {
-					$debug_output .= 'DEBUG API REQUEST: SHIP RATES<br>';
+					$debug_output .= 'BEGIN DEBUG: SHIP RATES API REQUEST<br>';
 					$debug_output .= '<pre>' . print_r($req, true) . '</pre>';
-					$debug_output .= 'END DEBUG API REQUEST: SHIP RATES<br>';					
+					$debug_output .= 'END DEBUG: SHIP RATES API REQUEST<br>';					
 				}
 
 				// Unique identifier for cart items & destiniation
@@ -490,9 +490,9 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 
 				// Debug output - ShipTime API Response
 				if ($this->debug && $is_admin === true) {
-					$debug_output .= 'DEBUG API RESPONSE: SHIP RATES<br>';
+					$debug_output .= 'BEGIN DEBUG: SHIP RATES API RESPONSE<br>';
 					$debug_output .= '<pre>' . print_r($shipRates, true) . '</pre>';
-					$debug_output .= 'END DEBUG API RESPONSE: SHIP RATES<br>';
+					$debug_output .= 'END DEBUG: SHIP RATES API RESPONSE<br>';
 				}
 
 				// Store response into DB

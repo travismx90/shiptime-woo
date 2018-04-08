@@ -102,7 +102,8 @@ class Box {
 		$dims = array($length, $width, $height);
 		sort($dims);
 
-		if ($this->InnerLength >= $dims[2] && $this->InnerWidth >= $dims[1] && $this->InnerHeight >= $dims[0] && $this->getPackingVolume() >= $dims[0]*$dims[1]*$dims[2]) {
+		if ($this->InnerLength >= $dims[2] && $this->InnerWidth >= $dims[1] && $this->InnerHeight >= $dims[0] && 
+			$this->getPackingVolume() >= $dims[0]*$dims[1]*$dims[2]) {
 			return true;
 		}
 		return false;

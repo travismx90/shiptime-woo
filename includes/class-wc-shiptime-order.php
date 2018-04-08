@@ -220,7 +220,8 @@ class WC_Order_ShipTime {
 		$quotes = self::casttoclass('stdClass', unserialize($shiptime_quote->quote));
 		$service = $shiptime_quote->shipping_method;
 		if (empty($quotes) || $service == 'Free Shipping' || $service == 'Shipping Rate' || $service == 'Shipping') {
-			// No live shipping rates returned. This order is either "flat rate", "free", or there was an error and we are in "fallback" mode
+			// No live shipping rates returned.
+			// This order is either "flat rate", "free", or there was an error and we are in "fallback" mode
 			return array(
 				'ServiceName' => $service,
 				'Packages' => unserialize($shiptime_quote->packages),
