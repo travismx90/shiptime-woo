@@ -131,7 +131,15 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			}
 
 			// Shipping Tax Class: Zero Rate
+			// ShipTime API handles all shipping taxes natively as necessary
 			update_option('woocommerce_shipping_tax_class', 'zero-rate');
+			
+			// Enable shipping calculator on cart page
+			update_option('woocommerce_enable_shipping_calc', 'yes');
+			
+			// Hide shipping costs until an address is entered
+			// ShipTime API requires FULL address info before rating
+			update_option('woocommerce_shipping_cost_requires_address', 'yes');
 		}
 
 		// Files to load every time class is instantiated
