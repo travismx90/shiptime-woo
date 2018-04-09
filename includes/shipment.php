@@ -80,7 +80,8 @@ class ShipmentBuilder {
 		$boxs = array();
 		if (!empty($boxes)) {
 			foreach ($boxes as $b) {
-				$box = new Box($b['label'], $b['outer_length'], $b['outer_width'], $b['outer_height'], $b['inner_length'], $b['inner_width'], $b['inner_height'], $b['weight']);
+				$box = new Box($b['label'], $b['outer_length'], $b['outer_width'], $b['outer_height'], 
+					$b['inner_length'], $b['inner_width'], $b['inner_height'], $b['weight']);
 				$boxs[] = $box;
 			}
 			$boxs = Box::sortBoxes($boxs);
@@ -97,7 +98,7 @@ class ShipmentBuilder {
 			foreach ($this->Items as $item) {
 				if (!isset($package) || !$this->canPackage($item["length"], $item["width"], $item["height"], $item["weight"], $package, $boxs, $max_l, $max_w, $max_h)) {
 					$package = new Package();
-					$this->Packages[] = $package;
+					$this->Packages[] = $package;	
 				}
 				$package->pack($item["length"], $item["width"], $item["height"], $item["weight"]);
 			}

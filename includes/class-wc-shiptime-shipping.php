@@ -7,6 +7,7 @@
  * @author      travism
  * @version     1.0
  */
+require_once('class-wc-functions.php');
 class WC_Shipping_ShipTime extends WC_Shipping_Method {
 
 	/**
@@ -18,7 +19,8 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 	public function __construct() {
 		$this->id = 'shiptime';
 		$this->title = $this->method_title = 'ShipTime';
-		$this->method_description = 'The <strong>ShipTime</strong> plugin obtains rates in real time from the ShipTime web service during cart/checkout.';
+		$this->method_description = 'The <strong>ShipTime</strong> plugin obtains rates in real time from the '
+			. 'ShipTime web service during cart/checkout.';
 		$this->init();
 	}
 
@@ -41,6 +43,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		$this->turnaround_days = isset($this->settings['turnaround_days']) && (int)$this->settings['turnaround_days'] >= 0 ? $this->settings['turnaround_days'] : 1;
 		$this->boxes = isset($this->settings['boxes']) ? $this->settings['boxes'] : array();
 		$this->services = isset($this->settings['services']) ? $this->settings['services'] : array();
+		$this->excluded_countries = isset($this->settings['excluded_countries']) ? $this->settings['excluded_countries'] : array();
 		$this->fallback_type = isset($this->settings['fallback_type']) ? $this->settings['fallback_type'] : '';
 		$this->fallback_fee = isset($this->settings['fallback_fee']) ? $this->settings['fallback_fee'] : '';
 		$this->fallback_max = isset($this->settings['fallback_max']) ? $this->settings['fallback_max'] : '';
@@ -139,6 +142,14 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 			'services'  => array(
 				'type'  => 'shipping_service'
 			),
+			'exclusions' => array(
+				'title' => 'Shipping Zones',
+				'type' => 'title',
+				'description' => 'Restrict shipping by location.'
+			),
+			'excluded_countries' => array(
+				'type' => 'country_multiselector',
+			),
 			'fallback' => array(
 				'title' => 'Fallback Rate',
 				'type' => 'title',
@@ -176,6 +187,37 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		);
 	}
 
+	/**
+	 * generate html function for 'country_multiselector' form field type.
+	 */
+	public function generate_country_multiselector_html() {
+		ob_start();
+		$opts = WC()->countries->get_shipping_countries();
+		shiptime_wp_multi_select(
+			array(
+				'id' => 'shiptime_exclude_countries',
+				'label' => 'Do not ship to the following: &nbsp; ',
+				'class' => 'select',
+				'options' => $opts,
+				'desc_tip' => 'true',
+				'description' => 'Note: You will not be able to accept orders from the countries selected here.'
+			),
+			'excluded_countries'
+        );
+		return ob_get_clean();
+	}
+
+	/**
+	 * validate function for 'country_multiselector' form field type.
+	 *
+	 * @access public
+	 * @param mixed $key
+	 * @return void
+	 */
+	public function validate_country_multiselector_field( $key ) {
+		return $_POST['shiptime_exclude_countries'];
+	}
+	
 	/**
 	 * generate html function for 'shipping_service' form field type.
 	 */
@@ -243,7 +285,8 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 
 			for ($i=0; $i<sizeof($box_weight); $i++) {
 
-				if ($box_outer_length[$i] && $box_outer_width[$i] && $box_outer_height[$i] && $box_inner_length[$i] && $box_inner_width[$i] && $box_inner_height[$i]) {
+				if ($box_outer_length[$i] && $box_outer_width[$i] && $box_outer_height[$i] && 
+					$box_inner_length[$i] && $box_inner_width[$i] && $box_inner_height[$i]) {
 
 					$boxes[] = array(
 						'label'        => wc_clean($box_label[$i]),
@@ -271,9 +314,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 	 * @return void
 	 */
 	public function calculate_shipping( $package = array() ) {
-		global $wpdb;
-		global $woocommerce;
-		global $current_user;
+		global $current_user, $woocommerce, $wpdb;
 
 		// WooCommerce currency setting
 		$base_currency = get_woocommerce_currency();
@@ -283,17 +324,19 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		$is_admin = (!empty($current_user->roles) && in_array('administrator', $current_user->roles)) ? true : false;
 
 		if (is_object($this->shiptime_auth)) {
-			// Calculate if required shipping fields are set
-			if (!empty($package['destination']['country']) && !empty($package['destination']['postcode']) && 
-				!empty($package['destination']['state']) && !empty($package['destination']['address'])) {
+			// Retrieve destination information
+			$dest_country = $package['destination']['country'];
+			$dest_state = $package['destination']['state'];
+			$dest_city = !empty($package['destination']['city']) ? $package['destination']['city'] : '-';
+			$dest_postcode = $package['destination']['postcode'];
+			$dest_addr = $package['destination']['address'] . 
+				(!empty($package['destination']['address_2']) ? $package['destination']['address_2'] : '');
+			
+			// Calculate if required shipping fields are set			
+			if (!empty($dest_country) && !empty($dest_postcode) && !empty($dest_state) && !empty($dest_addr)) {
+				// Do not calculate shipping if excluded country
+				if (in_array($dest_country, $this->excluded_countries)) return;
 				
-				$dest_country = $package['destination']['country'];
-				$dest_state = $package['destination']['state'];
-				$dest_city = !empty($package['destination']['city']) ? $package['destination']['city'] : '-';
-				$dest_postcode = $package['destination']['postcode'];
-				$dest_addr = $package['destination']['address'] . 
-					(!empty($package['destination']['address_2']) ? $package['destination']['address_2'] : '');
-
 				// Create the XML request
 				$req = new emergeit\GetRatesRequest();
 				$req->From->Attention = ucwords($this->shiptime_auth->first_name.' '.$this->shiptime_auth->last_name);
@@ -397,9 +440,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					// Customs Invoice Required
 					$dt = new emergeit\DutiesAndTaxes();
 					$dt->Dutiable = true;
-					$sel = sanitize_text_field($_GET['shiptime_selection']);
-					if ($sel !== 'CONSIGNEE') { $sel = 'SHIPPER'; }
-					$dt->Selection = 'SHIPPER'; // 'CONSIGNEE'
+					$dt->Selection = 'SHIPPER'; // 'SHIPPER' or 'CONSIGNEE'
 					$req->CustomsInvoice->DutiesAndTaxes = $dt;
 
 					$ic = new emergeit\InvoiceContact();
@@ -534,42 +575,44 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 				if (isset($shipRates->AvailableRates)) {
 					foreach ($shipRates->AvailableRates as $shipRate) {
 						// Add Rate
-						$lbl = $shipRate->CarrierName . " ". $this->services[$shipRate->ServiceId]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
-						$cost = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0.00 : $shipRate->TotalCharge->Amount/100.00;
-						if ($cost == 0) $lbl .= " (FREE)";
-						if ($this->services[$shipRate->ServiceId]['enabled'] == 'on') {
-							$markup_fixed = $this->services[$shipRate->ServiceId]['markup_fixed'];
-							$markup_fixed = is_numeric($markup_fixed) && !empty($markup_fixed) ? $markup_fixed : 0;
-							$markup_percentage = $this->services[$shipRate->ServiceId]['markup_percentage'];
-							$markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage/100.00 + 1 : 0;
-							if (!empty($cost)) {
-								if (!empty($markup_fixed)) {
-									$cost += $markup_fixed;
-								} elseif (!empty($markup_percentage)) {
-									$base_charge = $shipRate->BaseCharge->Amount/100.00;
-									$fuel_charge = 0;
-									$accessorial_charge = 0;
-									foreach ($shipRate->Surcharges as $surcharge) {
-										if ($surcharge->Code == 'FUEL') {
-											$fuel_charge += $surcharge->Price->Amount/100.00;
-										} else {
-											$accessorial_charge += $surcharge->Price->Amount/100.00;
+						if (array_key_exists($shipRate->ServiceId, $this->services)) { // skip services not enabled
+							$lbl = $shipRate->CarrierName . " ". $this->services[$shipRate->ServiceId]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
+							$cost = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0.00 : $shipRate->TotalCharge->Amount/100.00;
+							if ($cost == 0) $lbl .= " (FREE)";
+							if ($this->services[$shipRate->ServiceId]['enabled'] == 'on') {
+								$markup_fixed = $this->services[$shipRate->ServiceId]['markup_fixed'];
+								$markup_fixed = is_numeric($markup_fixed) && !empty($markup_fixed) ? $markup_fixed : 0;
+								$markup_percentage = $this->services[$shipRate->ServiceId]['markup_percentage'];
+								$markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage/100.00 + 1 : 0;
+								if (!empty($cost)) {
+									if (!empty($markup_fixed)) {
+										$cost += $markup_fixed;
+									} elseif (!empty($markup_percentage)) {
+										$base_charge = $shipRate->BaseCharge->Amount/100.00;
+										$fuel_charge = 0;
+										$accessorial_charge = 0;
+										foreach ($shipRate->Surcharges as $surcharge) {
+											if ($surcharge->Code == 'FUEL') {
+												$fuel_charge += $surcharge->Price->Amount/100.00;
+											} else {
+												$accessorial_charge += $surcharge->Price->Amount/100.00;
+											}
 										}
+										$tax_charge += ($shipRate->TotalCharge->Amount-$shipRate->TotalBeforeTaxes->Amount)/100.00;
+										$cost = (($base_charge + $fuel_charge + $tax_charge) * $markup_percentage) + $accessorial_charge;
 									}
-									$tax_charge += ($shipRate->TotalCharge->Amount-$shipRate->TotalBeforeTaxes->Amount)/100.00;
-									$cost = (($base_charge + $fuel_charge + $tax_charge) * $markup_percentage) + $accessorial_charge;
+									// Add cost of "flat fee" items if applicable
+									if (!empty($ff_shipping) && is_numeric($ff_shipping)) {
+										$cost = number_format($cost+$ff_shipping, 2, '.', '');
+									}
 								}
-								// Add cost of "flat fee" items if applicable
-								if (!empty($ff_shipping) && is_numeric($ff_shipping)) {
-									$cost = number_format($cost+$ff_shipping, 2, '.', '');
-								}
+								$rate = array(
+									'id'    => $this->id . ':' . $shipRate->ServiceId,
+									'label' => $lbl,
+									'cost'  => $cost
+								);
+								$sortedRates[] = $rate;
 							}
-							$rate = array(
-								'id'    => $this->id . ':' . $shipRate->ServiceId,
-								'label' => $lbl,
-								'cost'  => $cost
-							);
-							$sortedRates[] = $rate;
 						}
 					}
 

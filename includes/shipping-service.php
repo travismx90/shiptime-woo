@@ -226,6 +226,16 @@ class ShippingService {
 						$this->destCountries = array('US');
 						$this->displayName = 'Parcel Select';
 						break;
+					case 'ExpressMailInternational_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						$this->displayName = 'Express International';
+						break;
+					case 'PriorityMailInternational_EP':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						$this->displayName = 'Priority International';
+						break;					
 					default:
 						$this->originCountries = array('US');
 						$this->destCountries = array('NONE');
@@ -283,7 +293,8 @@ class ShippingService {
 	}
 
 	public function isDomestic() {
-		return (in_array($this->homeCountry, $this->originCountries) && in_array($this->homeCountry, $this->destCountries));
+		return (in_array($this->homeCountry, $this->originCountries) && 
+			in_array($this->homeCountry, $this->destCountries));
 	}
 
 	public function isIntl() {
@@ -296,7 +307,8 @@ class ShippingService {
 	}
 
 	public function isValid() {
-		return (in_array($this->homeCountry, $this->originCountries) && !in_array('NONE', $this->originCountries) && !in_array('NONE', $this->destCountries));
+		return (in_array($this->homeCountry, $this->originCountries) && 
+			!in_array('NONE', $this->originCountries) && !in_array('NONE', $this->destCountries));
 	}
 
 	public function getId() {

@@ -100,5 +100,6 @@
 				?>
 			</tbody>
 		</table>
+		<br>
 	</td>
 </tr>

@@ -249,8 +249,7 @@ class WC_Order_ShipTime {
 	}
 
 	function add_shiptime_metabox() {
-		global $post;
-		global $wpdb;
+		global $post, $wpdb;
 
 		if ( !$post ) return;
 
@@ -316,10 +315,9 @@ class WC_Order_ShipTime {
 	}
 
 	function shiptime_metabox_content1() {
-		global $wpdb;
-		global $post;
+		global $post, $wpdb;
+		
 		$shipmentId = '';
-
 		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 		$shiptime_settings = get_option('woocommerce_shiptime_settings');
 
@@ -544,8 +542,8 @@ class WC_Order_ShipTime {
 	}
 
 	function shiptime_metabox_content2() {
-		global $wpdb;
-		global $post;
+		global $post, $wpdb;
+
 		$shipmentId = '';
 		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 
@@ -599,6 +597,7 @@ class WC_Order_ShipTime {
 
 	function shiptime_metabox_content3() {
 		global $post;
+		
 		$quote = $this->shipping_meta['Quote'];
 
 		if ($quote->TotalCharge->Amount == 0) {
@@ -775,8 +774,7 @@ class WC_Order_ShipTime {
 	}
 
 	function shiptime_place_shipment() {
-		global $woocommerce;
-		global $wpdb;
+		global $woocommerce, $wpdb;
 
 		// Woo order id
 		$id = base64_decode($_GET['shiptime_place_shipment']);
@@ -1204,8 +1202,7 @@ class WC_Order_ShipTime {
 	}
 
 	function recalc() {
-		global $woocommerce;
-		global $wpdb;
+		global $woocommerce, $wpdb;
 
 		// Woo order id
 		if (isset($_GET['post']) && is_numeric($_GET['post'])) {
