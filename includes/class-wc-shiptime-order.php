@@ -636,6 +636,7 @@ class WC_Order_ShipTime {
 
 			$pre = get_woocommerce_currency_symbol();
 			$base = $quote->BaseCharge->Amount/100.00;
+			$exch_rate = (float) $quote->ExchangeRate;
 			$fuel = $accessorial = 0.00;
 			if (is_array($quote->Surcharges)) {
 				foreach ($quote->Surcharges as $surcharge) {
@@ -657,23 +658,23 @@ class WC_Order_ShipTime {
 				}
 			}
 
-			$r['details']  = "Base Charge: ".$pre.number_format($base, 2, '.', '')."<br>";
-			$r['details'] .= "Fuel Surcharge: ".$pre.number_format($fuel, 2, '.', '')."<br>";
-			$r['details'] .= "Other Surcharges: ".$pre.number_format($accessorial, 2, '.', '')."<br>";
+			$r['details']  = "Base Charge: ".$pre.number_format($base*$exch_rate, 2, '.', '')."<br>";
+			$r['details'] .= "Fuel Surcharge: ".$pre.number_format($fuel*$exch_rate, 2, '.', '')."<br>";
+			$r['details'] .= "Other Surcharges: ".$pre.number_format($accessorial*$exch_rate, 2, '.', '')."<br>";
 			if ($markup_fixed>0) {
 				$r['details'] .= "Fixed Markup: ".$pre.number_format($markup_fixed, 2, '.', '')."<br>";
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format($total_before_tax+$markup_fixed, 2, '.', '')."<br>";
-				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes, 2, '.', '')."<br>"; }
-				$total = number_format($total_after_tax+$markup_fixed, 2, '.', '');
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(($total_before_tax*$exch_rate)+$markup_fixed, 2, '.', '')."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes*$exch_rate, 2, '.', '')."<br>"; }
+				$total = number_format(($total_after_tax*$exch_rate)+$markup_fixed, 2, '.', '');
 			} elseif ($markup_percentage>0) {
 				$r['details'] .= "Percentage Markup: ".$markup_percentage."%<br>";
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>";
-				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$taxes*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>"; }
-				$total = number_format(ceil(100*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00, 2, '.', '');
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format(floor(100*$exch_rate*($total_before_tax-$accessorial)*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format(ceil(100*$exch_rate*$taxes*(1+$markup_percentage/100.00))/100.00, 2, '.', '')."<br>"; }
+				$total = number_format(ceil(100*$exch_rate*(($total_before_tax-$accessorial)*(1+$markup_percentage/100.00)+($taxes*(1+$markup_percentage/100.00))))/100.00, 2, '.', '');
 			} else {
-				$r['details'] .= "Total (w/o taxes): ".$pre.number_format($total_before_tax, 2, '.', '')."<br>";
-				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes, 2, '.', '')."<br>"; }
-				$total = number_format($total_after_tax, 2, '.', '');
+				$r['details'] .= "Total (w/o taxes): ".$pre.number_format($total_before_tax*$exch_rate, 2, '.', '')."<br>";
+				if ($taxes>0) { $r['details'] .= $tax_type.": ".$pre.number_format($taxes*$exch_rate, 2, '.', '')."<br>"; }
+				$total = number_format($total_after_tax*$exch_rate, 2, '.', '');
 			}
 			$r['details'] .= "Total (with taxes): ".$pre.$total."<br>";
 
@@ -842,7 +843,6 @@ class WC_Order_ShipTime {
 			$req->From->Notify = false;
 			$req->From->Residential = false;
 			// Pull customer info from Woo order
-			$user_info = get_user_meta(absint($order->customer_user));
 			$req->To->Attention = ucwords($ship_addr['first_name'] . ' ' . $ship_addr['last_name']);
 			// Verify/Correct City based on CountryCode and PostalCode
 			$ship_city = ucwords($ship_addr['city']);
@@ -1260,7 +1260,6 @@ class WC_Order_ShipTime {
 			$req->From->Notify = false;
 			$req->From->Residential = false;
 			// Pull customer info from Woo order
-			$user_info = get_user_meta(absint($order->customer_user));
 			$req->To->Attention = ucwords($ship_addr['first_name'] . ' ' . $ship_addr['last_name']);
 			$req->To->City = ucwords($ship_addr['city']);
 			$req->To->Phone = $bill_addr['phone'];
@@ -1329,9 +1328,9 @@ class WC_Order_ShipTime {
 					$product = $order->get_product_from_item( $item );
 
 					$i = new emergeit\InvoiceItem();
-					$i->Code = get_post_meta($product->id, 'shiptime_hs_code', true);
+					$i->Code = get_post_meta($product->get_id(), 'shiptime_hs_code', true);
 					$i->Description = $product->get_title();
-					$i->Origin = get_post_meta($product->id, 'shiptime_origin_country', true);
+					$i->Origin = get_post_meta($product->get_id(), 'shiptime_origin_country', true);
 					$i->Quantity->Value = (int)$item['qty'];
 					$i->UnitPrice->Amount = $item['line_subtotal'];
 					$i->UnitPrice->CurrencyCode = get_woocommerce_currency();
@@ -1376,7 +1375,7 @@ class WC_Order_ShipTime {
 			}
 
 			if (!empty($msg)) {
-				if ($err) {
+				if (isset($err) && !empty($err)) {
 					ob_start();
 					echo '<div class="error"><p>'.$msg.'</p></div>';
 				} else {

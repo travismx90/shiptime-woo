@@ -188,6 +188,7 @@ class Quote
 {
 	public $CarrierId = null;
 	public $CarrierName = null;
+	public $ExchangeRate = null;
 	public $ServiceId = null;
 	public $ServiceName = null;
 	public $BaseCharge = null;

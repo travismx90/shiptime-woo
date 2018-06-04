@@ -239,16 +239,28 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		$data = $_POST['services'];
 
 		foreach ($data as $serviceId => $options) {
-			$services[wc_clean($serviceId)] = array(
-				'id' => wc_clean($serviceId),
-				'name' => wc_clean($options['name']),
-				'display_name' => wc_clean($options['display_name']),
-				'carrier' => wc_clean($options['carrier']),
-				'intl' => wc_clean($options['intl']),
-				'enabled' => wc_clean($options['enabled']),
-				'markup_fixed' => wc_clean($options['markup_fixed']),
-				'markup_percentage' => wc_clean($options['markup_percentage'])
-			);
+			if (array_key_exists('enabled', $options)) { // prevent undefined index notice
+				$services[wc_clean($serviceId)] = array(
+					'id' => wc_clean($serviceId),
+					'name' => wc_clean($options['name']),
+					'display_name' => wc_clean($options['display_name']),
+					'carrier' => wc_clean($options['carrier']),
+					'intl' => wc_clean($options['intl']),
+					'enabled' => wc_clean($options['enabled']),
+					'markup_fixed' => wc_clean($options['markup_fixed']),
+					'markup_percentage' => wc_clean($options['markup_percentage'])
+				);
+			} else {
+				$services[wc_clean($serviceId)] = array(
+					'id' => wc_clean($serviceId),
+					'name' => wc_clean($options['name']),
+					'display_name' => wc_clean($options['display_name']),
+					'carrier' => wc_clean($options['carrier']),
+					'intl' => wc_clean($options['intl']),
+					'markup_fixed' => wc_clean($options['markup_fixed']),
+					'markup_percentage' => wc_clean($options['markup_percentage'])
+				);
+			}
 		}
 
 		return $services;
@@ -577,7 +589,8 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 						// Add Rate
 						if (array_key_exists($shipRate->ServiceId, $this->services)) { // skip services not enabled
 							$lbl = $shipRate->CarrierName . " ". $this->services[$shipRate->ServiceId]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
-							$cost = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0.00 : $shipRate->TotalCharge->Amount/100.00;
+							$exch_rate = (float) $shipRate->ExchangeRate;
+							$cost = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0.00 : $shipRate->TotalCharge->Amount*$exch_rate/100.00;
 							if ($cost == 0) $lbl .= " (FREE)";
 							if ($this->services[$shipRate->ServiceId]['enabled'] == 'on') {
 								$markup_fixed = $this->services[$shipRate->ServiceId]['markup_fixed'];
@@ -588,17 +601,17 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 									if (!empty($markup_fixed)) {
 										$cost += $markup_fixed;
 									} elseif (!empty($markup_percentage)) {
-										$base_charge = $shipRate->BaseCharge->Amount/100.00;
+										$base_charge = $shipRate->BaseCharge->Amount*$exch_rate/100.00;
 										$fuel_charge = 0;
 										$accessorial_charge = 0;
 										foreach ($shipRate->Surcharges as $surcharge) {
 											if ($surcharge->Code == 'FUEL') {
-												$fuel_charge += $surcharge->Price->Amount/100.00;
+												$fuel_charge += $surcharge->Price->Amount*$exch_rate/100.00;
 											} else {
-												$accessorial_charge += $surcharge->Price->Amount/100.00;
+												$accessorial_charge += $surcharge->Price->Amount*$exch_rate/100.00;
 											}
 										}
-										$tax_charge += ($shipRate->TotalCharge->Amount-$shipRate->TotalBeforeTaxes->Amount)/100.00;
+										$tax_charge += ($shipRate->TotalCharge->Amount-$shipRate->TotalBeforeTaxes->Amount)*$exch_rate/100.00;
 										$cost = (($base_charge + $fuel_charge + $tax_charge) * $markup_percentage) + $accessorial_charge;
 									}
 									// Add cost of "flat fee" items if applicable

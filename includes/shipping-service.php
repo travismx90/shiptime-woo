@@ -188,13 +188,23 @@ class ShippingService {
 					case 'Purolator Express Envelope':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
-						$this->displayName = 'Express Envelope.';
+						$this->displayName = 'Express Envelope';
 						break;
 					case 'Purolator Express Pack 10:30AM':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
 						$this->displayName = 'Express Pack 10:30AM';
 						break;
+					case 'Purolator Express 12PM':
+						$this->originCountries = array('CA');
+						$this->destCountries = array('US');
+						$this->displayName = 'Express 12PM';
+						break;
+					case 'Purolator Express Envelope 12PM':
+						$this->originCountries = array('CA');
+						$this->destCountries = array('CA');
+						$this->displayName = 'Express Envelope 12PM';
+						break;					
 					default:
 						$this->originCountries = array('CA');
 						$this->destCountries = array('NONE');

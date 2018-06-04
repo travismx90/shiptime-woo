@@ -521,40 +521,40 @@ class WC_ShipTime_Signup {
 						<tbody>
 							<tr>
 								<td class="page-name"><?php echo _x( 'First Name', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_first_name" name="shiptime_first_name" value="<?php echo esc_attr( $shiptime_auth->first_name ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_first_name" name="shiptime_first_name" value="<?php echo esc_attr( $shiptime_auth->first_name ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Last Name', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_last_name" name="shiptime_last_name" value="<?php echo esc_attr( $shiptime_auth->last_name ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_last_name" name="shiptime_last_name" value="<?php echo esc_attr( $shiptime_auth->last_name ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Email', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_email" name="shiptime_email" value="<?php echo esc_attr( $shiptime_auth->email ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_email" name="shiptime_email" value="<?php echo esc_attr( $shiptime_auth->email ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name">
 									<?php echo _x( 'Encrypted Username', 'Page title', 'woocommerce' ); ?>
 								</td>
-								<td><input type="text" id="shiptime_user" name="shiptime_user" value="<?php echo esc_attr( $shiptime_auth->username ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_user" name="shiptime_user" value="<?php echo esc_attr( $shiptime_auth->username ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name">
 									<?php echo _x( 'Encrypted Password', 'Page title', 'woocommerce' ); ?>
 								</td>
-								<td><input type="text" id="shiptime_passwd" name="shiptime_passwd" value="<?php echo esc_attr( $shiptime_auth->password ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_passwd" name="shiptime_passwd" value="<?php echo esc_attr( $shiptime_auth->password ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Company', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_company" name="shiptime_company" value="<?php echo esc_attr( $shiptime_auth->company ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_company" name="shiptime_company" value="<?php echo esc_attr( $shiptime_auth->company ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Address', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_address" name="shiptime_address" value="<?php echo esc_attr( $shiptime_auth->address ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_address" name="shiptime_address" value="<?php echo esc_attr( $shiptime_auth->address ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Country', 'Page title', 'woocommerce' ); ?></td>
 								<td>
-									<select onchange="loadStates()" id="shiptime_country" name="shiptime_country" style="height:28px !important">
+									<select onchange="loadStates()" id="shiptime_country" name="shiptime_country" style="height:28px !important" required>
 										<option value=""><?php _e( 'Select a country&hellip;', 'woocommerce' ); ?></option>
 									<?php
 										$shiptime_country = $shiptime_auth->country;
@@ -566,12 +566,12 @@ class WC_ShipTime_Signup {
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'City', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_city" name="shiptime_city" value="<?php echo esc_attr( $shiptime_auth->city ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_city" name="shiptime_city" value="<?php echo esc_attr( $shiptime_auth->city ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'State', 'Page title', 'woocommerce' ); ?></td>
 								<td>
-									<select id="shiptime_state" name="shiptime_state" style="height:28px !important">
+									<select id="shiptime_state" name="shiptime_state" style="height:28px !important" required>
 										<option value=""><?php _e( 'Select a state&hellip;', 'woocommerce' ); ?></option>
 									<?php
 										foreach( WC()->countries->get_states( $shiptime_country ) as $ckey => $cvalue )
@@ -582,16 +582,16 @@ class WC_ShipTime_Signup {
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Postal Code', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_postal_code" name="shiptime_postal_code" value="<?php echo esc_attr( $shiptime_auth->zip ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_postal_code" name="shiptime_postal_code" value="<?php echo esc_attr( $shiptime_auth->zip ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Phone', 'Page title', 'woocommerce' ); ?></td>
-								<td><input type="text" id="shiptime_phone" name="shiptime_phone" value="<?php echo esc_attr( $shiptime_auth->phone ) ; ?>" /></td>
+								<td><input type="text" id="shiptime_phone" name="shiptime_phone" value="<?php echo esc_attr( $shiptime_auth->phone ) ; ?>" required/></td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Language', 'Page title', 'woocommerce' ); ?></td>
 								<td>
-									<select name="shiptime_lang" style="height:28px !important">
+									<select name="shiptime_lang" style="height:28px !important" required>
 										<option value="EN"<?php echo selected( $shiptime_auth->lang, 'EN', false ); ?>><?php _e( 'English (EN)', 'woocommerce' ); ?></option>
 										<option value="FR"<?php echo selected( $shiptime_auth->lang, 'FR', false ); ?>><?php _e( 'French (FR)', 'woocommerce' ); ?></option>
 									</select>
