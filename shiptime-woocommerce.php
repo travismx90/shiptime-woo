@@ -3,8 +3,8 @@
  *  Plugin Name: ShipTime for WooCommerce
  *  Plugin URI: http://www.shiptime.com
  *  Description: Real-time shipping rates, label printing, and shipment tracking for your WooCommerce orders.
- *  Version: 0.0.19
- *  Author: shiptime
+ *  Version: 0.0.20
+ *  Author: ShipTime
  *  Author URI: http://www.shiptime.com
  *  
  *  WC requires at least: 3.0.0
@@ -14,6 +14,7 @@
  *  License: GNU General Public License v3.0
  *  License URI: http://www.gnu.org/licenses/gpl-3.0.html
 */
+
 if (!defined('ABSPATH')) {
 	exit;
 }
@@ -24,6 +25,9 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 	class ShipTime_WooCommerce {
 
 		public function __construct() {
+			// Check that the plugin requirements are being met by this web server
+			add_action('admin_notices', array($this, 'check_requirements'));
+
 			// Activation hooks
 			register_activation_hook(__FILE__, array($this, 'shiptime_activation_check'));
 			register_activation_hook(__FILE__, array($this, 'shiptime_database_check'));
@@ -31,7 +35,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			// Localization (To add French translation)
 			// load_plugin_textdomain('wc_shiptime', false, dirname(plugin_basename(__FILE__)) . '/languages/');
 
-			// Actions and Filters
+			// Normal Actions and Filters
 			add_action('init', array($this, 'init'));
 			add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'plugin_links'));
 			add_action('woocommerce_shipping_init', array($this, 'shipping_init'));
@@ -382,6 +386,16 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			}
 			else {
 				delete_post_meta($post_id, 'shiptime_origin_country');
+			}
+		}
+
+		// Do not install the plugin if requirements not met
+		public function check_requirements() {
+			// Check for SOAP extension
+			if (!extension_loaded('soap')) {
+				echo '<div class="error">
+				<p>The PHP SOAP extension must be installed to run the ShipTime for WooCommerce plugin.</p>
+				</div>';
 			}
 		}
 
