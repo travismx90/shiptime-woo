@@ -198,7 +198,7 @@ class WC_ShipTime_Signup {
 			</style>
 		</head>
 		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
-			<img src="http://www.shiptime.com/img/logo-shiptime.png" alt="ShipTime" />
+			<img src="<?php echo plugins_url('../img/shiptimeshipsmarter.png', __FILE__); ?>" width="300" alt="ShipTime" />
 			<h1>ShipTime Profile</h1>
 			<?php
 				if (isset($_SESSION['error'])) {
@@ -502,7 +502,7 @@ class WC_ShipTime_Signup {
 			<?php do_action( 'admin_head' ); ?>
 		</head>
 		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
-			<img src="http://www.shiptime.com/img/logo-shiptime.png" alt="ShipTime" />
+			<img src="<?php echo plugins_url('../img/shiptimeshipsmarter.png', __FILE__); ?>" width="300" alt="ShipTime" />
 			<h1>Update ShipTime Profile</h1>
 			<p>The following information is used when processing shipments from your WooCommerce orders.</p>
 			<?php
