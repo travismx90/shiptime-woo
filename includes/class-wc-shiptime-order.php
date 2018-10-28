@@ -328,14 +328,26 @@ class WC_Order_ShipTime {
 		?>
 			<strong>Select Shipping Service:</strong>
 		<?php
-			$this->shipping_services = $this->shiptime_domestic;
-			if($order->get_shipping_country() != $shiptime_auth->country) {
-				$this->shipping_services = $this->shiptime_intl;
+			// Only show valid services by order rather than all DOM/INTL services
+			$this->shipping_services = array();
+			$shiptime_quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE order_id=".$order->get_order_number()." ORDER BY id DESC LIMIT 1");
+			if (is_object($shiptime_quote)) {
+				$this->shipping_meta = $this->get_shipping_meta($shiptime_quote);
+			}
+			$quotes = self::casttoclass('stdClass', unserialize($shiptime_quote->quote));
+			foreach ($quotes->AvailableRates as $quote) {
+				if (array_key_exists($quote->ServiceId, $shiptime_settings['services'])) {
+					$svcName = $shiptime_settings['services'][$quote->ServiceId]['name'];
+					$this->shipping_services[$svcName] = $quote->ServiceId;
+				}
 			}
 			echo '<ul><li class="wide"><select class="select" name="shiptime_shipping_method" id="shiptime_shipping_method">';
 			foreach ($this->shipping_services as $svcName => $svcCode) {
-				$disp_name = $this->svc_carriers[$svcCode].' '.$shiptime_settings['services'][$svcCode]['display_name'];
-				echo '<option value="'.$svcName.'" ' . selected($shipping_method, $disp_name) . ' >'.$disp_name.'</option>';
+				// Only list services that are enabled in the plugin settings
+				if (array_key_exists($svcCode, $this->svc_carriers)) {
+					$disp_name = $this->svc_carriers[$svcCode].' '.$shiptime_settings['services'][$svcCode]['display_name'];
+					echo '<option value="'.$svcName.'" ' . selected($shipping_method, $disp_name) . ' >'.$disp_name.'</option>';
+				}
 			}
 			echo '</select></li>';
 			if($order->get_shipping_country() != $shiptime_auth->country) {

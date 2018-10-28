@@ -106,7 +106,7 @@ abstract class ApiClientBase
 					}
 					else
 					{
-						$sourceArr =& current(get_object_vars($source->{$k}));
+						$sourceArr = current(get_object_vars($source->{$k}));
 
 						if (!is_array($sourceArr))
 						{
