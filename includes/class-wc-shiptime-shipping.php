@@ -343,7 +343,11 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 			$dest_postcode = $package['destination']['postcode'];
 			$dest_addr = $package['destination']['address'] . 
 				(!empty($package['destination']['address_2']) ? $package['destination']['address_2'] : '');
-			
+			if (empty($dest_addr)) {
+				// default street address when calculating shipping on Cart page before entering full address
+				$dest_addr = '123 Test Street';
+			}
+
 			// Calculate if required shipping fields are set			
 			if (!empty($dest_country) && !empty($dest_postcode) && !empty($dest_state) && !empty($dest_addr)) {
 				// Do not calculate shipping if excluded country
