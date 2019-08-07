@@ -85,8 +85,8 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			dbDelta( $sql );
 
 			// Additional column: integration_id
-			$sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-					WHERE table_name = '" . $wpdb->prefix . "shiptime_login' " .
+			$sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " .
+					"WHERE table_name = '" . $wpdb->prefix . "shiptime_login' " .
 					"AND column_name = 'integration_id'";
 			$row = $wpdb->get_results($sql);
 			if (empty($row)) {
