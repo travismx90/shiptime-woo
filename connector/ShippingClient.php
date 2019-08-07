@@ -69,6 +69,7 @@ class PlaceShipmentRequest extends EmergeitApiRequest
 	public $ShipDate = null;
 	public $DeferredProcessing = null;
 	public $CustomsInvoice = null;
+	public $InsuranceType = null;
 
 	public function __construct()
 	{

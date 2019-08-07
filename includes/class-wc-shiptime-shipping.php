@@ -347,14 +347,15 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 				// default street address when calculating shipping on Cart page before entering full address
 				$dest_addr = '123 Test Street';
 			}
-
+						
 			// Calculate if required shipping fields are set			
 			if (!empty($dest_country) && !empty($dest_postcode) && !empty($dest_state) && !empty($dest_addr)) {
 				// Do not calculate shipping if excluded country
 				if (in_array($dest_country, $this->excluded_countries)) return;
-				
+
 				// Create the XML request
 				$req = new emergeit\GetRatesRequest();
+				$req->IntegrationID = $this->shiptime_auth->integration_id;
 				$req->From->Attention = ucwords($this->shiptime_auth->first_name.' '.$this->shiptime_auth->last_name);
 				$req->From->Phone = $this->shiptime_auth->phone;
 				$req->From->CompanyName = $this->shiptime_auth->company;
@@ -567,9 +568,11 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 						$pkg->setHeight(round(wc_get_dimension($pkg->getHeight(), get_option( 'woocommerce_dimension_unit' ), 'in'), 1));
 					}
 					if (!empty($woocommerce->session->cart)) {
-						$sessid = array_shift(array_keys($woocommerce->session->cart));
+						$sessids = array_keys($woocommerce->session->cart);
+						$sessid = array_shift($sessids);
 					} else {
-						$sessid = array_shift(array_keys($woocommerce->cart->get_cart()));
+						$sessids = array_keys($woocommerce->cart->get_cart());
+						$sessid = array_shift($sessids);
 					}
 					if (isset($sessid)) {
 						$wpdb->insert(

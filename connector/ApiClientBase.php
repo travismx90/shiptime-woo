@@ -70,19 +70,24 @@ abstract class ApiClientBase
 			'EncryptedPassword' => $this->_encPassword
 		);
 
-		// All API requests are wrapped within a <Request> and returned within
-		// a <Response> except for getLocation, which uses neither
-		if ($method !== 'getLocation') {
+		// All API requests are wrapped within a <Request> except for getLocation and getAccountDetail
+		$req_exceptions = array('getLocation', 'getAccountDetail');
+		if (!in_array($method, $req_exceptions)) {
 			$soapReq = array(array('Key' => $key, 'Request' => get_object_vars($req)));
-
-			$soapResp = $this->_soapClient->__soapCall($method, $soapReq)->Response;
+		
+			$soapResp = $this->_soapClient->__soapCall($method, $soapReq)->Response; 
 			//$this->storeSessionId();
 		} else {
 			$soapReq = array(array_merge(array('Key' => $key), get_object_vars($req)));
-
-			$soapResp = $this->_soapClient->__soapCall($method, $soapReq);
+			
+			// All API responses are wrapped within a <Response> except for getLocation
+			if ($method == 'getLocation') {
+				$soapResp = $this->_soapClient->__soapCall($method, $soapReq);
+			} else {
+				$soapResp = $this->_soapClient->__soapCall($method, $soapReq)->Response;
+			}
 		}
-
+		
 		return $soapResp;
 	}
 
@@ -173,6 +178,8 @@ abstract class ApiClientBase
 
 class EmergeitApiRequest
 {
+	public $IntegrationID = null;
+	
 	public function __construct()
 	{
 	}

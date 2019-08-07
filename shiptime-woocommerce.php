@@ -3,14 +3,14 @@
  *  Plugin Name: ShipTime for WooCommerce
  *  Plugin URI: http://www.shiptime.com
  *  Description: Real-time shipping rates, label printing, and shipment tracking for your WooCommerce orders.
- *  Version: 0.0.22
+ *  Version: 0.0.24
  *  Author: ShipTime
  *  Author URI: http://www.shiptime.com
- *  
+ *
  *  WC requires at least: 3.0.0
- *	WC tested up to: 3.5.0
- *	
- *  Copyright: © 2018 ShipTime
+ *	WC tested up to: 3.6.0
+ *
+ *  Copyright: © 2019 ShipTime
  *  License: GNU General Public License v3.0
  *  License URI: http://www.gnu.org/licenses/gpl-3.0.html
 */
@@ -68,6 +68,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 				id mediumint(9) NOT NULL AUTO_INCREMENT,
 				username varchar(255) DEFAULT '' NOT NULL,
 				password varchar(255) DEFAULT '' NOT NULL,
+				integration_id varchar(64) DEFAULT '' NOT NULL,
 				first_name varchar(64) DEFAULT '' NOT NULL,
 				last_name varchar(64) DEFAULT '' NOT NULL,
 				email varchar(255) DEFAULT '' NOT NULL,
@@ -82,6 +83,33 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 				UNIQUE KEY id (id)
 			) $charset_collate;";
 			dbDelta( $sql );
+
+			// Additional column: integration_id
+			$sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+					WHERE table_name = '" . $wpdb->prefix . "shiptime_login' " .
+					"AND column_name = 'integration_id'";
+			$row = $wpdb->get_results($sql);
+			if (empty($row)) {
+				$sql = "ALTER TABLE " . $wpdb->prefix . 'shiptime_login' . 
+						" ADD COLUMN integration_id VARCHAR(64) NOT NULL AFTER password";
+				$wpdb->query($sql);
+				// Set value of integration_id based on country
+				$sql = "SELECT country FROM " . $wpdb->prefix . 'shiptime_login' . 
+						" ORDER BY id DESC LIMIT 1";
+				$var = $wpdb->get_var($sql);
+				$sql = "UPDATE " . $wpdb->prefix . 'shiptime_login' . 
+						" SET integration_id = '";
+				if ($var === 'CA') {
+					// WooCommerce Canada = 9af5f7f4-1f07-61e8-1c2d-df7ae01bbeff
+					$sql .= "9af5f7f4-1f07-61e8-1c2d-df7ae01bbeff'";
+				}
+				if ($var === 'US') {
+					// WooCommerce U.S.A. = c42a72d0-100f-441e-9611-502aee4d8059
+					$sql .= "c42a72d0-100f-441e-9611-502aee4d8059'";
+				}
+				$sql .= " LIMIT 100";
+				$wpdb->query($sql);
+			}
 
 			// Table: shiptime_order
 			$table_name = $wpdb->prefix . 'shiptime_order';
@@ -137,10 +165,10 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			// Shipping Tax Class: Zero Rate
 			// ShipTime API handles all shipping taxes natively as necessary
 			update_option('woocommerce_shipping_tax_class', 'zero-rate');
-			
+
 			// Enable shipping calculator on cart page
 			update_option('woocommerce_enable_shipping_calc', 'yes');
-			
+
 			// Hide shipping costs until an address is entered
 			// ShipTime API requires FULL address info before rating
 			update_option('woocommerce_shipping_cost_requires_address', 'yes');
@@ -233,8 +261,9 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 
 			$is_admin = (!empty($current_user->roles) && in_array('administrator', $current_user->roles)) ? true : false;
 			if ($is_admin) {
-				$cart_sessid = array_shift(array_keys($woocommerce->session->cart));
-				$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");			
+				$cart_sessids = array_keys($woocommerce->session->cart);
+				$cart_sessid = array_shift($cart_sessids);
+				$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");
 				// Add HTML for Debug Mode above shipping rates
 				wp_enqueue_script('shiptime-debug', plugins_url('js/wc-shiptime-debug-html.js', __FILE__), array('jquery'), null, true);
 				$data = array(
@@ -249,7 +278,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			global $woocommerce, $wpdb;
 
 			$cart_sessid = array_shift(array_keys($woocommerce->session->cart));
-			$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");			
+			$quote = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_quote WHERE cart_sessid='".$cart_sessid."' ORDER BY id DESC LIMIT 1");
 			// Add HTML for Debug Mode above shipping rates
 			$fragments['div.shiptime_debug'] = '<div class="shiptime_debug">'.$quote->debug.'</div>';
 			// Add back HTML for Estimated Delivery below shipping rates
@@ -359,7 +388,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			}
 			else {
 				delete_post_meta($post_id, 'shiptime_ff_dom');
-			}			
+			}
 
 			// Flat Fee Intl
 			$shiptime_ff_intl = $_POST['shiptime_ff_intl'];
@@ -368,12 +397,12 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			}
 			else {
 				delete_post_meta($post_id, 'shiptime_ff_intl');
-			}	
+			}
 
 			// HS Code
 			$shiptime_hs_code = $_POST['shiptime_hs_code'];
 			if (is_numeric($shiptime_hs_code) && (strlen($shiptime_hs_code) == 6 || strlen($shiptime_hs_code) == 10)) {
-				update_post_meta($post_id, 'shiptime_hs_code', esc_attr($shiptime_hs_code));
+				update_post_meta($post_id, 'shiptime_hs_code', esc_attr(str_pad($shiptime_hs_code, 10, "0", STR_PAD_RIGHT)));
 			}
 			else {
 				delete_post_meta($post_id, 'shiptime_hs_code');

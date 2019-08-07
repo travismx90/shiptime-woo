@@ -14,7 +14,7 @@ class WC_ShipTime_Signup {
 	 * Hook in tabs
 	 */
 	public function __construct() {
-		add_action( 'admin_menu', array( $this, 'admin_menus'  ) );
+		add_action( 'admin_menu', array( $this, 'admin_menus' ) );
 		add_action( 'admin_init', array( $this, 'shiptime_signup' ) );
 		add_action( 'admin_init', array( $this, 'shiptime_redirect' ) );
 	}
@@ -76,16 +76,43 @@ class WC_ShipTime_Signup {
 
 		if (!empty($_POST['shiptime_signup'])) {
 			call_user_func( array($this, 'shiptime_signup_screen_save') );
+		} elseif (!empty($_POST['shiptime_login'])) {
+			call_user_func( array($this, 'shiptime_login_screen_save') );
+		} elseif (!empty($_POST['shiptime_cc'])) {
+			call_user_func( array($this, 'shiptime_cc_screen_save') );
 		}
 
 		ob_start();
 		if (!$shiptime_activated) {
-			$this->shiptime_signup_screen();
-		} else {
-			if (get_transient('shiptime_signup_required')) {
-				delete_transient('shiptime_signup_required');
+			if (array_key_exists('existing', $_GET)) {
+				$country = $_GET['country'];
+				if (empty($country)) $country = 'CA';
+				if (!empty($_GET['existing'])) {
+					// 3a. Existing ShipTime user
+					$this->shiptime_login_screen($country);
+				} else {
+					// 3b. New ShipTime account
+					$this->shiptime_signup_screen($country);
+				}
+			} else {
+				if (!empty($_GET['country'])) {
+					// 2. Select Existing or New account
+					$this->shiptime_connect_screen($_GET['country']);
+				} else {
+					// 1. Select Country
+					$this->shiptime_intro_screen();
+				}
 			}
-			$this->shiptime_signedup_screen();
+		} else {
+			if (array_key_exists('register_cc', $_GET)) {
+				// 4. Add Credit Card to ShipTime account
+				$this->shiptime_cc_screen();
+			} else {
+				if (get_transient('shiptime_signup_required')) {
+					delete_transient('shiptime_signup_required');
+				}
+				$this->shiptime_signedup_screen();
+			}
 		}
 		exit;
 	}
@@ -118,7 +145,7 @@ class WC_ShipTime_Signup {
 						$defaults[$field] = !empty($user_info['billing_city'][0]) ? ucwords($user_info['billing_city'][0]) : ucwords($user_info['shipping_city'][0]);
 						break;
 					case 'shiptime_company':
-						$defaults[$field] = !empty($user_info['billing_company'][0]) ? $user_info['billing_company'][0] : $user_info['shipping_company'][0];
+						$defaults[$field] = !empty($user_info['billing_company'][0]) ? $user_info['billing_company'][0] : '';
 						break;
 					case 'shiptime_country':
 						$defaults[$field] = !empty($user_info['billing_country'][0]) ? $user_info['billing_country'][0] : $user_info['shipping_country'][0];
@@ -155,16 +182,94 @@ class WC_ShipTime_Signup {
 	}
 
 	/**
+	 * ShipTime Intro Screen. Proceed to CA/US Screen.
+	 */
+	public function shiptime_intro_screen() {
+		?>
+		<!DOCTYPE html>
+		<html xmlns="http://www.w3.org/1999/xhtml" <?php language_attributes(); ?>>
+		<head>
+			<meta name="viewport" content="width=device-width" />
+			<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+			<title><?php _e( 'WooCommerce &rsaquo; Setup Wizard', 'woocommerce' ); ?></title>
+			<?php wp_print_scripts( 'shiptime-signup' ); ?>
+			<?php do_action( 'admin_print_styles' ); ?>
+			<?php do_action( 'admin_head' ); ?>
+		</head>
+		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
+			<img src="<?php echo plugins_url('../img/shiptimeshipsmarter.png', __FILE__); ?>" width="300" alt="ShipTime" />
+			<h1>Choose Your Country</h1>
+			<div class="wc-setup-content">
+				<p style="margin:0;text-align:center">
+					<a style="text-decoration: none" href="<?php echo admin_url( 'index.php?page=shiptime-signup&country=CA' );?>">
+						<img src="<?php echo plugins_url('../img/Flag_CA.png', __FILE__); ?>" height="85" alt="ShipTime CA" />
+					</a>
+					&nbsp; &nbsp;
+					<a style="text-decoration: none" href="<?php echo admin_url( 'index.php?page=shiptime-signup&country=US' );?>">
+						<img src="<?php echo plugins_url('../img/Flag_US.png', __FILE__); ?>" height="85" alt="ShipTime US" />
+					</a>
+				</p>
+			</div>
+			<a class="wc-return-to-dashboard" href="<?php echo esc_url( admin_url() ); ?>"><?php _e( 'Return to the WordPress Dashboard', 'woocommerce' ); ?></a>
+		</body>
+		</html>	
+		<?php
+	}
+
+	/**
+	 * ShipTime Connect Screen. Proceed to Signup/Login Screen.
+	 */
+	public function shiptime_connect_screen($country='CA') {
+		?>
+		<!DOCTYPE html>
+		<html xmlns="http://www.w3.org/1999/xhtml" <?php language_attributes(); ?>>
+		<head>
+			<meta name="viewport" content="width=device-width" />
+			<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+			<title><?php _e( 'WooCommerce &rsaquo; Setup Wizard', 'woocommerce' ); ?></title>
+			<?php wp_print_scripts( 'shiptime-signup' ); ?>
+			<?php do_action( 'admin_print_styles' ); ?>
+			<?php do_action( 'admin_head' ); ?>
+		</head>
+		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
+			<img src="<?php echo plugins_url('../img/shiptimeshipsmarter.png', __FILE__); ?>" width="300" alt="ShipTime" />
+			<br><br>
+			<?php if ($country === 'CA') { ?>
+				<a style="font-size:0.8em;margin-right:20px;text-decoration: none" href="<?php echo admin_url( 'index.php?page=shiptime-signup&country=US' );?>">
+					<img src="<?php echo plugins_url('../img/Flag_CA.png', __FILE__); ?>" height="50" alt="ShipTime CA" />
+					Change Country
+				</a>
+			<?php } else { ?>
+				<a style="font-size:0.8em;margin-right:20px;text-decoration: none" href="<?php echo admin_url( 'index.php?page=shiptime-signup&country=CA' );?>">
+					<img src="<?php echo plugins_url('../img/Flag_US.png', __FILE__); ?>" height="50" alt="ShipTime US" />
+					Change Country
+				</a>
+			<?php } ?>
+			<h1 style="display:inline">Connect to ShipTime</h1>
+			<br><br>
+			<div class="wc-setup-content">
+				<p style="margin:0;text-align:center">
+					<a href="<?php echo admin_url( 'index.php?page=shiptime-signup&country='.$country.'&existing=1' );?>"><button class="button-primary">Existing ShipTime User</button></a>
+					&nbsp; or &nbsp;
+					<a href="<?php echo admin_url( 'index.php?page=shiptime-signup&country='.$country.'&existing=0' );?>"><button class="button-primary">Sign Up for ShipTime</button></a>
+				</p>
+			</div>
+			<a class="wc-return-to-dashboard" href="<?php echo esc_url( admin_url() ); ?>"><?php _e( 'Return to the WordPress Dashboard', 'woocommerce' ); ?></a>
+		</body>
+		</html>	
+		<?php
+	}	
+
+	/**
 	 * ShipTime Signup Form
 	 */
-	public function shiptime_signup_screen() {
+	public function shiptime_signup_screen($country) {
 		$user_info = get_user_meta(get_current_user_id());
 		$defaults = $this->get_default_values($user_info);
 
 		$shiptime_address = $defaults['shiptime_address'];
 		$shiptime_city = $defaults['shiptime_city'];
 		$shiptime_company = $defaults['shiptime_company'];
-		$shiptime_country = $defaults['shiptime_country'];
 		$shiptime_email = $defaults['shiptime_email'];
 		$shiptime_passwd = $defaults['shiptime_passwd'];
 		$shiptime_first_name = $defaults['shiptime_first_name'];
@@ -199,14 +304,12 @@ class WC_ShipTime_Signup {
 		</head>
 		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
 			<img src="<?php echo plugins_url('../img/shiptimeshipsmarter.png', __FILE__); ?>" width="300" alt="ShipTime" />
-			<h1>ShipTime Profile</h1>
 			<?php
 				if (isset($_SESSION['error'])) {
 					$defaults = $_SESSION['defaults']; unset($_SESSION['defaults']);
 					$shiptime_address = $defaults['shiptime_address'];
 					$shiptime_city = $defaults['shiptime_city'];
 					$shiptime_company = $defaults['shiptime_company'];
-					$shiptime_country = $defaults['shiptime_country'];
 					$shiptime_email = $defaults['shiptime_email'];
 					$shiptime_passwd = $defaults['shiptime_passwd'];
 					$shiptime_first_name = $defaults['shiptime_first_name'];
@@ -222,6 +325,20 @@ class WC_ShipTime_Signup {
 			<?php
 				}
 			?>
+			<br><br>
+			<?php if ($country === 'CA') { ?>
+				<a style="font-size:0.8em;margin-right:20px;text-decoration: none" href="<?php echo admin_url( 'index.php?page=shiptime-signup&country=US' );?>">
+					<img src="<?php echo plugins_url('../img/Flag_CA.png', __FILE__); ?>" height="50" alt="ShipTime CA" />
+					Change Country
+				</a>
+			<?php } else { ?>
+				<a style="font-size:0.8em;margin-right:20px;text-decoration: none" href="<?php echo admin_url( 'index.php?page=shiptime-signup&country=CA' );?>">
+					<img src="<?php echo plugins_url('../img/Flag_US.png', __FILE__); ?>" height="50" alt="ShipTime US" />
+					Change Country
+				</a>
+			<?php } ?>			
+			<h1 style="display:inline">Sign Up for ShipTime</h1>
+			<br><br>
 			<div class="wc-setup-content">
 				<form method="post">
 					<table class="wc-setup-pages form-table" cellspacing="0">
@@ -232,6 +349,7 @@ class WC_ShipTime_Signup {
 							</tr>
 						</thead>
 						<tbody>
+							<input type="hidden" id="shiptime_country" name="shiptime_country" value="<?php echo $country; ?>" required/>
 							<tr>
 								<td class="page-name"><?php echo _x( 'First Name', 'Page title', 'woocommerce' ); ?></td>
 								<td><input type="text" id="shiptime_first_name" name="shiptime_first_name" value="<?php echo esc_attr( $shiptime_first_name ) ; ?>" /></td>
@@ -244,25 +362,10 @@ class WC_ShipTime_Signup {
 								<td class="page-name"><?php echo _x( 'Email', 'Page title', 'woocommerce' ); ?></td>
 								<td><input type="text" id="shiptime_email" name="shiptime_email" value="<?php echo esc_attr( $shiptime_email ) ; ?>" /></td>
 							</tr>
-							<?php if (!$_GET['new_signup']) { ?>
-							<tr>
-								<td class="page-name">
-									<?php echo _x( 'Encrypted Username', 'Page title', 'woocommerce' ); ?>
-								</td>
-								<td><input type="text" id="shiptime_user" name="shiptime_user" value="<?php echo esc_attr( $shiptime_user ) ; ?>" /></td>
-							</tr>
-							<tr>
-								<td class="page-name">
-									<?php echo _x( 'Encrypted Password', 'Page title', 'woocommerce' ); ?>
-								</td>
-								<td><input type="text" id="shiptime_passwd" name="shiptime_passwd" value="<?php echo esc_attr( $shiptime_passwd ) ; ?>" /></td>
-							</tr>
-							<?php } else { ?>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Password', 'Page title', 'woocommerce' ); ?></td>
 								<td><input type="password" id="shiptime_passwd" name="shiptime_passwd" value="<?php echo esc_attr( $shiptime_passwd ) ; ?>" /></td>
 							</tr>
-							<?php } ?>
 							<tr>
 								<td class="page-name"><?php echo _x( 'Company', 'Page title', 'woocommerce' ); ?></td>
 								<td><input type="text" id="shiptime_company" name="shiptime_company" value="<?php echo esc_attr( $shiptime_company ) ; ?>" /></td>
@@ -270,19 +373,6 @@ class WC_ShipTime_Signup {
 							<tr>
 								<td class="page-name"><?php echo _x( 'Address', 'Page title', 'woocommerce' ); ?></td>
 								<td><input type="text" id="shiptime_address" name="shiptime_address" value="<?php echo esc_attr( $shiptime_address ) ; ?>" /></td>
-							</tr>
-							<tr>
-								<td class="page-name"><?php echo _x( 'Country', 'Page title', 'woocommerce' ); ?></td>
-								<td>
-									<select onchange="loadStates()" id="shiptime_country" name="shiptime_country" style="height:28px !important">
-										<option value=""><?php _e( 'Select a country&hellip;', 'woocommerce' ); ?></option>
-									<?php
-										$shiptime_country = isset($_POST['shiptime_country']) ? $_POST['shiptime_country'] : 'CA';
-										foreach( WC()->countries->get_shipping_countries() as $key => $value )
-											echo '<option value="' . esc_attr( $key ) . '"' . ($key==$shiptime_country ? ' selected' : '') . '>' . esc_html( $value ) . '</option>';
-									?>
-									</select>
-								</td>
 							</tr>
 							<tr>
 								<td class="page-name"><?php echo _x( 'City', 'Page title', 'woocommerce' ); ?></td>
@@ -294,7 +384,7 @@ class WC_ShipTime_Signup {
 									<select id="shiptime_state" name="shiptime_state" style="height:28px !important">
 										<option value=""><?php _e( 'Select a state&hellip;', 'woocommerce' ); ?></option>
 									<?php
-										foreach( WC()->countries->get_states( $shiptime_country ) as $ckey => $cvalue )
+										foreach( WC()->countries->get_states( $country ) as $ckey => $cvalue )
 											echo '<option value="' . esc_attr( $ckey ) . '" ' . selected( $shiptime_state, $ckey, false ) . '>' . __( esc_html( $cvalue ), 'woocommerce' ) .'</option>';
 									?>
 									</select>
@@ -326,20 +416,6 @@ class WC_ShipTime_Signup {
 			<a class="wc-return-to-dashboard" href="<?php echo esc_url( admin_url() ); ?>"><?php _e( 'Return to the WordPress Dashboard', 'woocommerce' ); ?></a>
 		</body>
 		</html>
-		<script type="text/javascript">
-			function loadStates() {
-				var country = document.getElementById("shiptime_country");
-				var statesHtml = document.getElementById("shiptime_state");
-
-				if (country.value == "US") {
-					statesHtml.innerHTML= '<option value="">Select a state…</option><option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option><option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option><option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="DC">District Of Columbia</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="HI">Hawaii</option><option value="ID">Idaho</option><option value="IL">Illinois</option><option value="IN">Indiana</option><option value="IA">Iowa</option><option value="KS">Kansas</option><option value="KY">Kentucky</option><option value="LA">Louisiana</option><option value="ME">Maine</option><option value="MD">Maryland</option><option value="MA">Massachusetts</option><option value="MI">Michigan</option><option value="MN">Minnesota</option><option value="MS">Mississippi</option><option value="MO">Missouri</option><option value="MT">Montana</option><option value="NE">Nebraska</option><option value="NV">Nevada</option><option value="NH">New Hampshire</option><option value="NJ">New Jersey</option><option value="NM">New Mexico</option><option value="NY">New York</option><option value="NC">North Carolina</option><option value="ND">North Dakota</option><option value="OH">Ohio</option><option value="OK">Oklahoma</option><option value="OR">Oregon</option><option value="PA">Pennsylvania</option><option value="RI">Rhode Island</option><option value="SC">South Carolina</option><option value="SD">South Dakota</option><option value="TN">Tennessee</option><option value="TX">Texas</option><option value="UT">Utah</option><option value="VT">Vermont</option><option value="VA">Virginia</option><option value="WA">Washington</option><option value="WV">West Virginia</option><option value="WI">Wisconsin</option><option value="WY">Wyoming</option><option value="AA">Armed Forces (AA)</option><option value="AE">Armed Forces (AE)</option><option value="AP">Armed Forces (AP)</option>';
-				} else if (country.value == "CA") {
-					statesHtml.innerHTML = '<option value="">Select a state…</option><option value="AB">Alberta</option><option value="BC">British Columbia</option><option value="MB">Manitoba</option><option value="NB">New Brunswick</option><option value="NL">Newfoundland and Labrador</option><option value="NT">Northwest Territories</option><option value="NS">Nova Scotia</option><option value="NU">Nunavut</option><option value="ON" selected="selected">Ontario</option><option value="PE">Prince Edward Island</option><option value="QC">Quebec</option><option value="SK">Saskatchewan</option><option value="YT">Yukon Territory</option>';
-				} else {
-					statesHtml.innerHTML = '<option value="">Selected Country not supported</option>';
-				}
-			}
-		</script>		
 		<?php
 	}
 
@@ -359,6 +435,11 @@ class WC_ShipTime_Signup {
 		$shiptime_city = sanitize_text_field($_POST['shiptime_city']);
 		$shiptime_company = sanitize_text_field($_POST['shiptime_company']);
 		$shiptime_country = sanitize_text_field($_POST['shiptime_country']);
+		if ($shiptime_country === 'US') {
+			$shiptime_integration = 'c42a72d0-100f-441e-9611-502aee4d8059';
+		} else {
+			$shiptime_integration = '9af5f7f4-1f07-61e8-1c2d-df7ae01bbeff';
+		}
 		$shiptime_email = sanitize_text_field($_POST['shiptime_email']);
 		$shiptime_user = sanitize_text_field($_POST['shiptime_user']);
 		$shiptime_passwd = sanitize_text_field($_POST['shiptime_passwd']);
@@ -380,6 +461,7 @@ class WC_ShipTime_Signup {
 					array(
 						'username' => $shiptime_user,
 						'password' => $shiptime_passwd,
+						'integration_id' => $shiptime_integration,
 						'first_name' => $shiptime_first_name,
 						'last_name' => $shiptime_last_name,
 						'email' => $shiptime_email,
@@ -401,6 +483,7 @@ class WC_ShipTime_Signup {
 					array(
 						'username' => $shiptime_user,
 						'password' => $shiptime_passwd,
+						'integration_id' => $shiptime_integration,
 						'first_name' => $shiptime_first_name,
 						'last_name' => $shiptime_last_name,
 						'email' => $shiptime_email,
@@ -425,7 +508,7 @@ class WC_ShipTime_Signup {
 
 			$req = new emergeit\SignupRequest();
 
-			$req->IntegrationID = "85566cfb-9d0e-421b-bc78-649a1711a3ea";
+			$req->IntegrationID = $shiptime_integration;
 			$req->Address = $shiptime_address;
 			$req->City = $shiptime_city;
 			$req->CompanyName = $shiptime_company;
@@ -448,6 +531,7 @@ class WC_ShipTime_Signup {
 					array(
 						'username' => $resp->key->EncryptedUsername,
 						'password' => $resp->key->EncryptedPassword,
+						'integration_id' => $shiptime_integration,
 						'first_name' => $shiptime_first_name,
 						'last_name' => $shiptime_last_name,
 						'email' => $shiptime_email,
@@ -461,9 +545,7 @@ class WC_ShipTime_Signup {
 						'lang' => $shiptime_lang
 					)
 				);
-				delete_transient( 'shiptime_signup_required' );
-				set_transient( 'shiptime_signup_success', 1, 30 );
-				wp_redirect( admin_url() );
+				wp_redirect( admin_url('index.php?page=shiptime-signup&register_cc=1') );
 				exit;
 			} else {
 				// Failure
@@ -483,6 +565,346 @@ class WC_ShipTime_Signup {
 					'shiptime_state' => $shiptime_state
 				);
 			}
+		}
+	}
+
+	/**
+	 * ShipTime Login Form
+	 */
+	public function shiptime_login_screen($country) {
+		?>
+		<!DOCTYPE html>
+		<html xmlns="http://www.w3.org/1999/xhtml" <?php language_attributes(); ?>>
+		<head>
+			<meta name="viewport" content="width=device-width" />
+			<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+			<title><?php _e( 'WooCommerce &rsaquo; Setup Wizard', 'woocommerce' ); ?></title>
+			<?php wp_print_scripts( 'shiptime-signup' ); ?>
+			<?php do_action( 'admin_print_styles' ); ?>
+			<?php do_action( 'admin_head' ); ?>
+		</head>
+		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
+			<img src="<?php echo plugins_url('../img/shiptimeshipsmarter.png', __FILE__); ?>" width="300" alt="ShipTime" />
+			<br><br>
+			<?php if ($country === 'CA') { ?>
+				<a style="font-size:0.8em;margin-right:20px;text-decoration: none" href="<?php echo admin_url( 'index.php?page=shiptime-signup&country=US' );?>">
+					<img src="<?php echo plugins_url('../img/Flag_CA.png', __FILE__); ?>" height="50" alt="ShipTime CA" />
+					Change Country
+				</a>
+			<?php } else { ?>
+				<a style="font-size:0.8em;margin-right:20px;text-decoration: none" href="<?php echo admin_url( 'index.php?page=shiptime-signup&country=CA' );?>">
+					<img src="<?php echo plugins_url('../img/Flag_US.png', __FILE__); ?>" height="50" alt="ShipTime US" />
+					Change Country
+				</a>
+			<?php } ?>			
+			<h1 style="display:inline">Log In to Your ShipTime Account</h1>
+			<br><br>
+			<div class="wc-setup-content">
+				<form method="post">
+					<table class="wc-setup-pages form-table" cellspacing="0">
+						<thead>
+							<tr>
+								<th class="page-name"><?php _e( 'Option', 'woocommerce' ); ?></th>
+								<th class="page-description"><?php _e( 'Value', 'woocommerce' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<input type="hidden" id="shiptime_country" name="shiptime_country" value="<?php echo $country; ?>" required/>
+							<tr>
+								<td class="page-name">
+									<?php echo _x( 'ShipTime Username', 'Page title', 'woocommerce' ); ?>
+								</td>
+								<td><input type="text" id="shiptime_user" name="shiptime_user" value="" required/></td>
+							</tr>
+							<tr>
+								<td class="page-name">
+									<?php echo _x( 'ShipTime Password', 'Page title', 'woocommerce' ); ?>
+								</td>
+								<td><input type="password" id="shiptime_passwd" name="shiptime_passwd" value="" required/></td>
+							</tr>
+						</tbody>
+					</table>
+					<p><input type="submit" class="button-primary button button-large" value="Log In" name="shiptime_login" /></p>
+					<?php wp_nonce_field( 'shiptime-login' ); ?>
+				</form>							
+			</div>
+			<a class="wc-return-to-dashboard" href="<?php echo esc_url( admin_url() ); ?>"><?php _e( 'Return to the WordPress Dashboard', 'woocommerce' ); ?></a>
+		</body>
+		</html>	
+		<?php
+	}
+
+	/**
+	 * Save ShipTime Login Form
+	 * Make two calls to Signup API, Store API credentials and Account Info for later use
+	 * Upon success, redirect user to Dashboard
+	 * Upon failure, validate form data
+	 */
+	public function shiptime_login_screen_save() {
+		global $wpdb;
+
+		check_admin_referer( 'shiptime-login' );
+
+		require_once(dirname(__FILE__).'/../connector/SignupClient.php');
+		$signupClient = new emergeit\SignupClient();
+
+		// Parse out all user input
+		$shiptime_user = sanitize_text_field($_POST['shiptime_user']);
+		$shiptime_passwd = sanitize_text_field($_POST['shiptime_passwd']);
+		$shiptime_country = sanitize_text_field($_POST['shiptime_country']);
+		if ($shiptime_country === 'US') {
+			$shiptime_integration = 'c42a72d0-100f-441e-9611-502aee4d8059';
+		} else {
+			$shiptime_integration = '9af5f7f4-1f07-61e8-1c2d-df7ae01bbeff';
+		}
+
+		// Use getKey request to get Encrypted Username/Password
+		$req = new emergeit\GetKeyRequest();
+		$req->IntegrationID = $shiptime_integration;
+		$req->Username = $shiptime_user;
+		$req->Password = $shiptime_passwd;
+		$resp = $signupClient->getKey($req);
+		if (!empty($resp->Messages)) {
+			$_SESSION['error'] = array_shift($resp->Messages)->Text;
+			return;
+		}
+
+		// Use getAccountDetail request to get Account Info
+		$req = new emergeit\GetAccountDetailRequest();
+		$req->IntegrationID = $shiptime_integration;
+		$key = new emergeit\Key();
+		$key->EncryptedUsername = $resp->Credentials->EncryptedUsername;
+		$key->EncryptedPassword = $resp->Credentials->EncryptedPassword;
+		$req->Key = $key;
+		$resp = $signupClient->getAccountDetail($req);
+		if (!empty($resp->Messages)) {
+			$_SESSION['error'] = array_shift($resp->Messages)->Text;
+			return;
+		} else {
+			// Successfully obtained account info from API, Save to DB
+			$user_info = get_user_meta(get_current_user_id());
+			$shiptime_first_name = !empty($user_info['billing_first_name'][0]) ? ucwords($user_info['billing_first_name'][0]) : ucwords($user_info['shipping_first_name'][0]);
+			$shiptime_last_name = !empty($user_info['billing_last_name'][0]) ? ucwords($user_info['billing_last_name'][0]) : ucwords($user_info['shipping_last_name'][0]);
+			$shiptime_address = $resp->Address . (!empty($resp->Address2) ? ' '.$resp->Address2 : '');
+			$shiptime_lang = 'EN'; // default to English
+
+			$wpdb->insert(
+				"{$wpdb->prefix}shiptime_login",
+				array(
+					'username' => $key->EncryptedUsername,
+					'password' => $key->EncryptedPassword,
+					'integration_id' => $shiptime_integration,
+					'first_name' => $shiptime_first_name,
+					'last_name' => $shiptime_last_name,
+					'email' => $resp->Email,
+					'company' => $resp->BusinessName,
+					'address' => $shiptime_address,
+					'country' => $resp->Country,
+					'city' => $resp->City,
+					'state' => $resp->state,
+					'zip' => $resp->Zip,
+					'phone' => $resp->Phone,
+					'lang' => $shiptime_lang
+				)
+			);
+			
+			// Successfully logged into account, Signin process completed	
+			delete_transient( 'shiptime_signup_required' );
+			set_transient( 'shiptime_signup_success', 1, 30 );
+
+			wp_redirect( admin_url() );
+			exit;
+		}
+	}
+
+	/**
+	 * ShipTime Register CC Form
+	 * Upon success, redirect user to Dashboard
+	 */
+	public function shiptime_cc_screen() {
+		?>
+		<!DOCTYPE html>
+		<html xmlns="http://www.w3.org/1999/xhtml" <?php language_attributes(); ?>>
+		<head>
+			<meta name="viewport" content="width=device-width" />
+			<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+			<title>ShipTime Payment Method</title>
+			<?php wp_print_scripts( 'shiptime-signup' ); ?>
+			<?php do_action( 'admin_print_styles' ); ?>
+			<?php do_action( 'admin_head' ); ?>
+			<style>
+				div.error {
+				    margin: 5px 0 15px 0;
+				    background: #fff;
+				    border-left: 4px solid #dc3232;
+				    -webkit-box-shadow: 0 1px 1px 0 rgba(0,0,0,.1);
+				    box-shadow: 0 1px 1px 0 rgba(0,0,0,.1);
+				    padding: 12px;
+				}
+			</style>			
+		</head>
+		<body style="margin-top:20px !important" class="wc-setup wp-core-ui">
+			<img src="<?php echo plugins_url('../img/shiptimeshipsmarter.png', __FILE__); ?>" width="300" alt="ShipTime" />
+			<?php
+			if (isset($_SESSION['error'])) {
+			?>
+				<div class="error">
+					<?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
+				</div>
+			<?php
+			}
+			?>
+			<h1>Add Payment Method to your ShipTime Account</h1>
+			<p>The following billing information is used when processing shipments from your WooCommerce orders.</p>
+			<?php
+				global $wpdb;
+				$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
+			?>
+			<div class="wc-setup-content">
+				<form method="post">
+					<table class="wc-setup-pages form-table" cellspacing="0">
+						<thead>
+							<tr>
+								<th class="page-name"><?php _e( 'Option', 'woocommerce' ); ?></th>
+								<th class="page-description"><?php _e( 'Value', 'woocommerce' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Name on Card', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_card_name" name="shiptime_card_name" value="<?php echo esc_attr( $shiptime_auth->first_name . " " . $shiptime_auth->last_name ) ; ?>" required/></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Card Number', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_card_num" name="shiptime_card_num" value="" required/></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'CVD (verification code)', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_card_cvd" name="shiptime_card_cvd" value="" required/></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Expiration Month', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_card_exp_mo" name="shiptime_card_exp_mo" value="" required/></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Expiration Year', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_card_exp_yr" name="shiptime_card_exp_yr" value="" required/></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Address', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_card_address" name="shiptime_card_address" value="<?php echo esc_attr( $shiptime_auth->address ) ; ?>" required/></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Country', 'Page title', 'woocommerce' ); ?></td>
+								<td>
+									<select onchange="loadStates()" id="shiptime_card_country" name="shiptime_card_country" style="height:28px !important" required>
+										<option value=""><?php _e( 'Select a country&hellip;', 'woocommerce' ); ?></option>
+									<?php
+										$shiptime_country = $shiptime_auth->country;
+										foreach( WC()->countries->get_shipping_countries() as $key => $value )
+											echo '<option value="' . esc_attr( $key ) . '"' . ($key==$shiptime_country ? ' selected' : '') . '>' . esc_html( $value ) . '</option>';
+									?>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'City', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_card_city" name="shiptime_card_city" value="<?php echo esc_attr( $shiptime_auth->city ) ; ?>" required/></td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Province/State', 'Page title', 'woocommerce' ); ?></td>
+								<td>
+									<select id="shiptime_card_state" name="shiptime_card_state" style="height:28px !important" required>
+										<option value=""><?php _e( 'Select a state&hellip;', 'woocommerce' ); ?></option>
+									<?php
+										foreach( WC()->countries->get_states( $shiptime_country ) as $ckey => $cvalue )
+											echo '<option value="' . esc_attr( $ckey ) . '" ' . selected( $shiptime_auth->state, $ckey, false ) . '>' . __( esc_html( $cvalue ), 'woocommerce' ) .'</option>';
+									?>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td class="page-name"><?php echo _x( 'Postal Code', 'Page title', 'woocommerce' ); ?></td>
+								<td><input type="text" id="shiptime_card_zip" name="shiptime_card_zip" value="<?php echo esc_attr( $shiptime_auth->zip ) ; ?>" required/></td>
+							</tr>
+						</tbody>
+					</table>
+					<p><input type="submit" class="button-primary button button-large" value="Add Credit Card" name="shiptime_cc" /></p>
+					<?php wp_nonce_field( 'shiptime-cc' ); ?>
+				</form>
+			</div>
+			<a class="wc-return-to-dashboard" href="<?php echo esc_url( admin_url() ); ?>"><?php _e( 'Return to the WordPress Dashboard', 'woocommerce' ); ?></a>
+		</body>
+		</html>
+		<script type="text/javascript">
+			function loadStates() {
+				var country = document.getElementById("shiptime_card_country");
+				var statesHtml = document.getElementById("shiptime_card_state");
+
+				if (country.value == "US") {
+					statesHtml.innerHTML= '<option value="">Select a state…</option><option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option><option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option><option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="DC">District Of Columbia</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="HI">Hawaii</option><option value="ID">Idaho</option><option value="IL">Illinois</option><option value="IN">Indiana</option><option value="IA">Iowa</option><option value="KS">Kansas</option><option value="KY">Kentucky</option><option value="LA">Louisiana</option><option value="ME">Maine</option><option value="MD">Maryland</option><option value="MA">Massachusetts</option><option value="MI">Michigan</option><option value="MN">Minnesota</option><option value="MS">Mississippi</option><option value="MO">Missouri</option><option value="MT">Montana</option><option value="NE">Nebraska</option><option value="NV">Nevada</option><option value="NH">New Hampshire</option><option value="NJ">New Jersey</option><option value="NM">New Mexico</option><option value="NY">New York</option><option value="NC">North Carolina</option><option value="ND">North Dakota</option><option value="OH">Ohio</option><option value="OK">Oklahoma</option><option value="OR">Oregon</option><option value="PA">Pennsylvania</option><option value="RI">Rhode Island</option><option value="SC">South Carolina</option><option value="SD">South Dakota</option><option value="TN">Tennessee</option><option value="TX">Texas</option><option value="UT">Utah</option><option value="VT">Vermont</option><option value="VA">Virginia</option><option value="WA">Washington</option><option value="WV">West Virginia</option><option value="WI">Wisconsin</option><option value="WY">Wyoming</option><option value="AA">Armed Forces (AA)</option><option value="AE">Armed Forces (AE)</option><option value="AP">Armed Forces (AP)</option>';
+				} else if (country.value == "CA") {
+					statesHtml.innerHTML = '<option value="">Select a state…</option><option value="AB">Alberta</option><option value="BC">British Columbia</option><option value="MB">Manitoba</option><option value="NB">New Brunswick</option><option value="NL">Newfoundland and Labrador</option><option value="NT">Northwest Territories</option><option value="NS">Nova Scotia</option><option value="NU">Nunavut</option><option value="ON" selected="selected">Ontario</option><option value="PE">Prince Edward Island</option><option value="QC">Quebec</option><option value="SK">Saskatchewan</option><option value="YT">Yukon Territory</option>';
+				} else {
+					statesHtml.innerHTML = '<option value="">Selected Country not supported</option>';
+				}
+			}
+		</script>		
+		<?php
+	}
+
+	/**
+	 * Save ShipTime CC Form
+	 * Upon success, redirect user to Dashboard
+	 * Upon failure, validate form data
+	 */
+	public function shiptime_cc_screen_save() {
+		global $wpdb;
+
+		check_admin_referer( 'shiptime-cc' );
+
+		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
+
+		require_once(dirname(__FILE__).'/../connector/SignupClient.php');
+		$signupClient = new emergeit\SignupClient($shiptime_auth->username, $shiptime_auth->password);
+
+		// Parse out all user input
+		$shiptime_card_name = sanitize_text_field($_POST['shiptime_card_name']);
+		$shiptime_card_num = sanitize_text_field($_POST['shiptime_card_num']);
+		$shiptime_card_cvd = sanitize_text_field($_POST['shiptime_card_cvd']);
+		$shiptime_card_exp_mo = (int)sanitize_text_field($_POST['shiptime_card_exp_mo']);
+		$shiptime_card_exp_yr = (int)sanitize_text_field($_POST['shiptime_card_exp_yr']);
+		$shiptime_card_address = sanitize_text_field($_POST['shiptime_card_address']);
+		$shiptime_card_country = sanitize_text_field($_POST['shiptime_card_country']);
+		$shiptime_card_city = sanitize_text_field($_POST['shiptime_card_city']);
+		$shiptime_card_state = sanitize_text_field($_POST['shiptime_card_state']);		
+		$shiptime_card_zip = sanitize_text_field($_POST['shiptime_card_zip']);
+
+		// Use registerPaymentMethod request to Add CC info to ShipTime account
+		$req = new emergeit\RegisterPaymentMethodRequest();
+		$req->IntegrationID = $shiptime_auth->integration_id;
+		$req->CardNumber = $shiptime_card_num;
+		$req->CVD = $shiptime_card_cvd;
+		$req->City = $shiptime_card_city;
+		$req->CountryCode = $shiptime_card_country;
+		$req->ExpiryMonth = $shiptime_card_exp_mo;
+		$req->ExpiryYear = $shiptime_card_exp_yr;
+		$req->NameOnCard = $shiptime_card_name;
+		$req->PostalCode = $shiptime_card_zip;
+		$req->Province = $shiptime_card_state;
+		$req->StreetAddress = $shiptime_card_address;
+
+		$resp = $signupClient->registerPaymentMethod($req);
+		if (!empty($resp->Messages)) {
+			$_SESSION['error'] = array_shift($resp->Messages)->Text;
+			return;
+		} else {
+			// Successfully connected CC to account, Signup process completed
+			delete_transient( 'shiptime_signup_required' );
+			set_transient( 'shiptime_signup_success', 1, 30 );
+
+			wp_redirect( admin_url() );
+			exit;
 		}
 	}
 

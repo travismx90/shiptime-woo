@@ -48,6 +48,7 @@ class GetRatesRequest extends EmergeitApiRequest
 	public $ShipmentItems = null;
 	public $ShipDate = null;
 	public $CustomsInvoice = null;
+	public $InsuranceType = null;
 
 	public function __construct()
 	{

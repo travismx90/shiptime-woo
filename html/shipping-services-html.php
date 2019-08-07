@@ -32,7 +32,7 @@
 					$encPass = $shiptime_auth->password;
 					$signupClient = new emergeit\SignupClient();
 					$req = new emergeit\GetServicesRequest();
-					$req->IntegrationID = "85566cfb-9d0e-421b-bc78-649a1711a3ea";
+					$req->IntegrationID = $shiptime_auth->integration_id;
 					$req->Credentials->EncryptedPassword = $encPass;
 					$req->Credentials->EncryptedUsername = $encUser;
 					$resp = $signupClient->getServices($req);

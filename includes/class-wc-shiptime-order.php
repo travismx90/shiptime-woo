@@ -197,7 +197,7 @@ class WC_Order_ShipTime {
 
 				// Set CarrierName => CarrierId pairs
 				$req = new emergeit\GetServicesRequest();
-				$req->IntegrationID = "85566cfb-9d0e-421b-bc78-649a1711a3ea";
+				$req->IntegrationID = $shiptime_auth->integration_id;
 				$req->Credentials->EncryptedPassword = $encPass;
 				$req->Credentials->EncryptedUsername = $encUser;
 				$resp = $this->_signupCLient->getServices($req);
@@ -467,6 +467,11 @@ class WC_Order_ShipTime {
 			</ul>
 			<span style="height:10px;display:block"></span><hr>
 			<a href="#TB_inline?width=600&height=480&inlineId=add-pkg" class="thickbox">+ Add Package to Shipment</a>
+			<span style="height:10px;display:block"></span><hr>
+			<p><strong>Insurance</strong> &nbsp; 
+				<input type="radio" name="insurance_type" value="CARRIER">Carrier &nbsp; 
+				<input type="radio" name="insurance_type" value="SHIPTIME">ShipTime
+			</p>
 			<span style="height:10px;display:block"></span>
 		<?php
 			if (!empty($this->shiptime_data->recalc)) {
@@ -557,11 +562,11 @@ class WC_Order_ShipTime {
 		global $post, $wpdb;
 
 		$shipmentId = '';
+		$order = $this->get_wc_order( $post->ID );
 		$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 
 		if(empty($this->shipping_meta)) {
-			$order 					= $this->get_wc_order( $post->ID );
-			$shipping_method 		= $order->get_shipping_method();
+			$shipping_method = $order->get_shipping_method();
 		} else {
 			$href_url = admin_url( '/post.php?post='.$post->ID.'&action=edit&shiptime_track_shipment='.base64_encode( $post->ID ) );
 			if ($this->shiptime_data->emergeit_id == '1234') {
@@ -580,7 +585,7 @@ class WC_Order_ShipTime {
 
 						foreach ($this->carrier_list as $carrierName => $carrierUrl) {
 							if (stripos($this->shiptime_data->shipping_service, $carrierName) !== false) {
-								$trackURL = "<a target='_new' href='" . constant("self::$carrierUrl") . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
+								$trackURL = "<a target='_new' href='" . $carrierUrl . $tnms[$i] . "'>Track No. {$tnms[$i]}</a><br>";
 								break;
 							}
 						}
@@ -705,7 +710,9 @@ class WC_Order_ShipTime {
 		if (isset($id)) {
 			// Make trackShipment Request
 			$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
+			$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 			$req = new emergeit\TrackShipmentRequest();
+			$req->IntegrationID = $shiptime_auth->integration_id;
 			$req->ShipId = $shiptime_data->emergeit_id;
 
 			if ($this->_shippingClient->isConnected()) {
@@ -739,9 +746,11 @@ class WC_Order_ShipTime {
 		$id = base64_decode($_GET['shiptime_cancel_shipment']);
 
 		if (isset($id)) {
-			// Make trackShipment Request
+			// Make cancelShipment Request
 			$shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$id}");
+			$shiptime_auth = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_login");
 			$req = new emergeit\CancelShipmentRequest();
+			$req->IntegrationID = $shiptime_auth->integration_id;
 			$req->ShipId = $shiptime_data->emergeit_id;
 
 			if ($this->_shippingClient->isConnected()) {
@@ -830,6 +839,7 @@ class WC_Order_ShipTime {
 
 			// Make placeShipment Request
 			$req = new emergeit\PlaceShipmentRequest();
+			$req->IntegrationID = $shiptime_auth->integration_id;
 
 			foreach ($this->shiptime_carriers as $carrier => $cid) {
 				if (strpos($shiptime_data->shipping_service, $carrier) !== false) {
@@ -859,6 +869,7 @@ class WC_Order_ShipTime {
 			// Verify/Correct City based on CountryCode and PostalCode
 			$ship_city = ucwords($ship_addr['city']);
 			$loc = new emergeit\GetLocationRequest();
+			$loc->IntegrationID = $shiptime_auth->integration_id;
 			$loc->CountryCode = $ship_addr['country'];
 			$loc->PostalCode = $ship_addr['postcode'];
 			try {
@@ -1258,6 +1269,7 @@ class WC_Order_ShipTime {
 
 			// Setup XML Request
 			$req = new emergeit\GetRatesRequest();
+			$req->IntegrationID = $shiptime_auth->integration_id;
 
 			// Pull merchant info from ShipTime signup
 			$req->From->Attention = ucwords($shiptime_auth->first_name) . ' ' . ucwords($shiptime_auth->last_name);
