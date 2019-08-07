@@ -3,7 +3,7 @@
  *  Plugin Name: ShipTime for WooCommerce
  *  Plugin URI: http://www.shiptime.com
  *  Description: Real-time shipping rates, label printing, and shipment tracking for your WooCommerce orders.
- *  Version: 0.0.24
+ *  Version: 0.0.25
  *  Author: ShipTime
  *  Author URI: http://www.shiptime.com
  *
@@ -85,19 +85,19 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 			dbDelta( $sql );
 
 			// Additional column: integration_id
-			$sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+			$sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
 					WHERE table_name = '" . $wpdb->prefix . "shiptime_login' " .
 					"AND column_name = 'integration_id'";
 			$row = $wpdb->get_results($sql);
 			if (empty($row)) {
-				$sql = "ALTER TABLE " . $wpdb->prefix . 'shiptime_login' . 
+				$sql = "ALTER TABLE " . $wpdb->prefix . 'shiptime_login' .
 						" ADD COLUMN integration_id VARCHAR(64) NOT NULL AFTER password";
 				$wpdb->query($sql);
 				// Set value of integration_id based on country
-				$sql = "SELECT country FROM " . $wpdb->prefix . 'shiptime_login' . 
+				$sql = "SELECT country FROM " . $wpdb->prefix . 'shiptime_login' .
 						" ORDER BY id DESC LIMIT 1";
 				$var = $wpdb->get_var($sql);
-				$sql = "UPDATE " . $wpdb->prefix . 'shiptime_login' . 
+				$sql = "UPDATE " . $wpdb->prefix . 'shiptime_login' .
 						" SET integration_id = '";
 				if ($var === 'CA') {
 					// WooCommerce Canada = 9af5f7f4-1f07-61e8-1c2d-df7ae01bbeff
@@ -118,6 +118,7 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 				post_id mediumint(9) NOT NULL,
 				package_data text NOT NULL,
 				shipping_service varchar(255) DEFAULT '' NOT NULL,
+				insurance_type enum('', 'CARRIER', 'SHIPTIME') DEFAULT '' NOT NULL,
 				tracking_nums text NOT NULL,
 				label_url text NOT NULL,
 				invoice_url text NOT NULL,
@@ -131,6 +132,18 @@ if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_
 				UNIQUE KEY id (id)
 			) $charset_collate;";
 			dbDelta( $sql );
+
+			// Additional column: insurance_type
+			$sql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " .
+					"WHERE table_name = '" . $wpdb->prefix . "shiptime_order' " .
+					"AND column_name = 'insurance_type'";
+			$row = $wpdb->get_results($sql);
+			if (empty($row)) {
+				$sql = "ALTER TABLE " . $wpdb->prefix . 'shiptime_order' .
+						" ADD COLUMN insurance_type ENUM('', 'CARRIER', 'SHIPTIME') NOT NULL" .
+						" DEFAULT '' AFTER shipping_service";
+				$wpdb->query($sql);
+			}
 
 			// Table: shiptime_quote
 			$table_name = $wpdb->prefix . 'shiptime_quote';

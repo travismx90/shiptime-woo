@@ -595,7 +595,11 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					foreach ($shipRates->AvailableRates as $shipRate) {
 						// Add Rate
 						if (array_key_exists($shipRate->ServiceId, $this->services)) { // skip services not enabled
-							$lbl = $shipRate->CarrierName . " ". $this->services[$shipRate->ServiceId]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
+							if (strpos($this->services[$shipRate->ServiceId]['display_name'], $shipRate->CarrierName) === false) {
+								$lbl = $shipRate->CarrierName . " ". $this->services[$shipRate->ServiceId]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
+							} else {
+								$lbl = $this->services[$shipRate->ServiceId]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
+							}
 							$exch_rate = (float) $shipRate->ExchangeRate;
 							$cost = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0.00 : $shipRate->TotalCharge->Amount*$exch_rate/100.00;
 							if ($cost == 0) $lbl .= " (FREE)";

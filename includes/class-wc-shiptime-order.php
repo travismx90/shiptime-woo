@@ -230,7 +230,11 @@ class WC_Order_ShipTime {
 		} else {
 			foreach ($quotes->AvailableRates as $quote) {
 				$dsp = $shiptime_settings['services'][$quote->ServiceId]['display_name'];
-				$lbl = $quote->CarrierName . ' ' . $dsp;
+				if (strpos($dsp, $quote->CarrierName) === false) {
+					$lbl = $quote->CarrierName . ' ' . $dsp;
+				} else {
+					$lbl = $dsp;
+				}
 				if ($lbl == $service) {
 					return array(
 						'ServiceName' => $service,
@@ -265,6 +269,7 @@ class WC_Order_ShipTime {
 		$this->shiptime_data = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}shiptime_order WHERE post_id={$post->ID}");
 
 		if (!isset($this->shiptime_data) && $this->shipping_meta) {
+
 			$packages = $box_codes = array();
 			foreach ($this->shipping_meta['Packages'] as $pkg) {
 				$pkg = self::casttoclass('stdClass', $pkg);
@@ -345,7 +350,11 @@ class WC_Order_ShipTime {
 			foreach ($this->shipping_services as $svcName => $svcCode) {
 				// Only list services that are enabled in the plugin settings
 				if (array_key_exists($svcCode, $this->svc_carriers)) {
-					$disp_name = $this->svc_carriers[$svcCode].' '.$shiptime_settings['services'][$svcCode]['display_name'];
+					if (strpos($shiptime_settings['services'][$svcCode]['display_name'], $this->svc_carriers[$svcCode]) === false) {
+						$disp_name = $this->svc_carriers[$svcCode].' '.$shiptime_settings['services'][$svcCode]['display_name'];
+					} else {
+						$disp_name = $shiptime_settings['services'][$svcCode]['display_name'];
+					}
 					echo '<option value="'.$svcName.'" ' . selected($shipping_method, $disp_name) . ' >'.$disp_name.'</option>';
 				}
 			}
@@ -465,14 +474,20 @@ class WC_Order_ShipTime {
 			}
 		?>
 			</ul>
-			<span style="height:10px;display:block"></span><hr>
 			<a href="#TB_inline?width=600&height=480&inlineId=add-pkg" class="thickbox">+ Add Package to Shipment</a>
-			<span style="height:10px;display:block"></span><hr>
-			<p><strong>Insurance</strong> &nbsp; 
-				<input type="radio" name="insurance_type" value="CARRIER">Carrier &nbsp; 
-				<input type="radio" name="insurance_type" value="SHIPTIME">ShipTime
-			</p>
-			<span style="height:10px;display:block"></span>
+			<?php if ($order->get_total() > 100) { ?>
+				<span style="height:10px;display:block"></span><hr>
+				<p><strong>Insurance</strong> &nbsp; 
+					<a href="#" onClick="toggleTerms(false)"><input type="radio" class="insurance_type" name="shiptime_insurance_type" value="CARRIER" <?php echo ($this->shiptime_data->insurance_type === 'CARRIER') ? 'checked' : ''; ?>></a>Carrier &nbsp; 
+					<a href="#" onClick="toggleTerms(true)"><input type="radio" class="insurance_type" name="shiptime_insurance_type" value="SHIPTIME" <?php echo ($this->shiptime_data->insurance_type === 'SHIPTIME' || $this->shiptime_data->insurance_type === '') ? 'checked' : ''; ?>></a>ShipTime
+					<img class="help_tip" style="float:none;" data-tip="Did you know? By insuring your shipment with ShipTime, you can save up to 50% 
+					on insurance and in the unlikely event that your shipment is damaged or lost you can easily process claims through your account and 
+					receive your refund in a timely manner." src="<?php echo WC()->plugin_url(); ?>/assets/images/help.png" height="16" width="16" />
+					<br><span class="shipsurance" style="font-size:0.8em">By selecting this service you agree to Shipsurance <a target="_blank" 
+					href="https://app.shiptime.com/docs/shipsurance_terms_and_condition.pdf">terms and conditions</a></span>
+				</p>
+			<?php } ?>
+			<hr><span style="height:10px;display:block"></span>
 		<?php
 			if (!empty($this->shiptime_data->recalc)) {
 				echo $this->shiptime_data->recalc;
@@ -511,7 +526,8 @@ class WC_Order_ShipTime {
 						'&parcel_width_'+i+'=' + jQuery('#parcel_width_'+i).val() +
 						'&parcel_height_'+i+'=' + jQuery('#parcel_height_'+i).val();
 					}
-					location.href = loc + '&shiptime_shipping_method=' + jQuery('#shiptime_shipping_method').val() + '&shiptime_selection=' + jQuery('#shiptime_selection').val();
+					location.href = loc + '&shiptime_shipping_method=' + jQuery('#shiptime_shipping_method').val() + 
+					'&shiptime_selection=' + jQuery('#shiptime_selection').val() + '&shiptime_insurance_type=' + jQuery('.insurance_type:checked').val();
 				    return false;
 				});
 			</script>
@@ -526,7 +542,8 @@ class WC_Order_ShipTime {
 						'&parcel_width_'+i+'=' + jQuery('#parcel_width_'+i).val() +
 						'&parcel_height_'+i+'=' + jQuery('#parcel_height_'+i).val();
 					}
-					location.href = loc + '&shiptime_shipping_method=' + jQuery('#shiptime_shipping_method').val() + '&shiptime_selection=' + jQuery('#shiptime_selection').val();
+					location.href = loc + '&shiptime_shipping_method=' + jQuery('#shiptime_shipping_method').val() + 
+					'&shiptime_selection=' + jQuery('#shiptime_selection').val() + '&shiptime_insurance_type=' + jQuery('.insurance_type:checked').val();
 				    return false;
 				});
 			</script>
@@ -535,6 +552,21 @@ class WC_Order_ShipTime {
 
 				function changeBox(id) {
 					lastId = id;
+				}
+			</script>
+			<script type="text/javascript">
+				var terms = jQuery('.shipsurance');
+
+				function toggleTerms(on) {
+					if (on) {
+						terms.show('slow');
+					} else {
+						terms.hide('slow');
+					}
+				}
+
+				if (jQuery('.insurance_type:checked').val() == 'CARRIER') {
+					terms.hide();
 				}
 			</script>
 		<?php
@@ -809,6 +841,10 @@ class WC_Order_ShipTime {
 			$ship_addr = $order->get_address('shipping');
 			$bill_addr = $order->get_address('billing');
 
+			// insurance_type = "CARRIER" or "SHIPTIME"
+			$insurance_type = sanitize_text_field($_GET['shiptime_insurance_type']);
+			if ($insurance_type !== 'SHIPTIME') { $insurance_type = 'CARRIER'; }
+
 			// Store data from form submit
 			$c=count($shiptime_pkgs);
 			$pkgs = array();
@@ -824,7 +860,8 @@ class WC_Order_ShipTime {
 				"{$wpdb->prefix}shiptime_order",
 				array(
 					'package_data' => serialize($pkgs),
-					'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method'])
+					'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method']),
+					'insurance_type' => $insurance_type
 				),
 				array( 'post_id' => $id ),
 				array(
@@ -910,14 +947,16 @@ class WC_Order_ShipTime {
 				$pkg_weight = wc_get_weight($pkg['weight'], 'lbs');
 				$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 
-				if ($order->get_shipping_country() != $shiptime_auth->country) {
-					$desc = array();
-					foreach ( $order->get_items( array( 'line_item' ) ) as $iid => $data ) {
-						$product = $order->get_product_from_item( $data );
-						$desc[] = $product->get_title();
-					}
-					$item->Description = implode(',', $desc);
+				$desc = array();
+				$sub = 0;
+				foreach ( $order->get_items( array( 'line_item' ) ) as $iid => $data ) {
+					$product = $order->get_product_from_item( $data );
+					$desc[] = $product->get_title();
+					$sub += $data['line_subtotal'];
 				}
+				$item->Description = implode(',', $desc);
+				$item->DeclaredValue->Amount = $sub;
+				$item->DeclaredValue->CurrencyCode = get_woocommerce_currency();
 
 				$req->ShipmentItems[] = $item;
 			}
@@ -950,11 +989,11 @@ class WC_Order_ShipTime {
 					$product = $order->get_product_from_item( $item );
 
 					$i = new emergeit\InvoiceItem();
-					$i->Code = get_post_meta($product->id, 'shiptime_hs_code', true);
+					$i->Code = get_post_meta($product->get_id(), 'shiptime_hs_code', true);
 					$i->Description = $product->get_title();
-					$i->Origin = get_post_meta($product->id, 'shiptime_origin_country', true);
+					$i->Origin = get_post_meta($product->get_id(), 'shiptime_origin_country', true);
 					$i->Quantity->Value = (int)$item['qty'];
-					$i->UnitPrice->Amount = $item['line_subtotal'];
+					$i->UnitPrice->Amount = (float)$item['line_subtotal']/$item['qty'];
 					$i->UnitPrice->CurrencyCode = get_woocommerce_currency();
 
 					$req->CustomsInvoice->InvoiceItems[] = $i;
@@ -963,6 +1002,8 @@ class WC_Order_ShipTime {
 				unset($req->CustomsInvoice);
 			}
 
+			// InsuranceType
+			$req->InsuranceType = $shiptime_data->insurance_type;
 
 			if ($this->_shippingClient->isConnected()) {
 
@@ -1238,6 +1279,10 @@ class WC_Order_ShipTime {
 			$ship_addr = $order->get_address('shipping');
 			$bill_addr = $order->get_address('billing');
 
+			// insurance_type = "CARRIER" or "SHIPTIME"
+			$insurance_type = sanitize_text_field($_GET['shiptime_insurance_type']);
+			if ($insurance_type !== 'SHIPTIME') { $insurance_type = 'CARRIER'; }
+
 			// Store data from form submit
 			$c=count($shiptime_pkgs);
 			$pkgs = array();
@@ -1253,7 +1298,8 @@ class WC_Order_ShipTime {
 				"{$wpdb->prefix}shiptime_order",
 				array(
 					'package_data' => serialize($pkgs),
-					'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method'])
+					'shipping_service' => sanitize_text_field($_GET['shiptime_shipping_method']),
+					'insurance_type' => $insurance_type
 				),
 				array( 'post_id' => $id ),
 				array(
@@ -1365,6 +1411,9 @@ class WC_Order_ShipTime {
 				unset($req->CustomsInvoice);
 			}
 
+			// InsuranceType
+			$req->InsuranceType = $shiptime_data->insurance_type;
+
 			if ($this->_ratingClient->isConnected()) {
 				// New API call
 				$shipRates = $this->_ratingClient->getRates($req);
@@ -1376,7 +1425,12 @@ class WC_Order_ShipTime {
 							$current_rate = wc_price($order->get_total_shipping(), array('currency' => $order->get_currency()));
 							$rate_info = $this->shiptime_rate_details($shipRate);
 							if (array_key_exists('total', $rate_info) && array_key_exists('details', $rate_info)) {
-								$msg = '<strong>'.$shipRate->CarrierName.' '.$svc->getDisplayName().'</strong><br>'.$rate_info['details'];
+								if (strpos($svc->getDisplayName(), $shipRate->CarrierName) === false) {
+									$msg = '<strong>'.$shipRate->CarrierName.' '.$svc->getDisplayName();
+								} else {
+									$msg = '<strong>'.$svc->getDisplayName();
+								}
+								$msg .= '</strong><br>'.$rate_info['details'];
 								$new_rate = $rate_info['total'];
 							}
 							break;

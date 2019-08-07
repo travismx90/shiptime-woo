@@ -221,6 +221,7 @@ class ShippingService {
 				break;
 			case 'USPS':
 				switch ($this->serviceName) {
+					// EasyPost integration
 					case 'Express_EP':
 						$this->originCountries = array('US');
 						$this->destCountries = array('US');
@@ -245,7 +246,56 @@ class ShippingService {
 						$this->originCountries = array('US');
 						$this->destCountries = array('ALL');
 						$this->displayName = 'Priority International';
-						break;					
+						break;
+					// Direct integration
+					case 'Priority Mail Express':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail  Large Flat Rate Box':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail  Medium Flat Rate Box':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail  Small Flat Rate Box':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail Express  Legal Flat Rate Envelope':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail Express  Padded Flat Rate Envelope':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail  Flat Rate Envelope':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail  Legal Flat Rate Envelope':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail  Padded Flat Rate Envelope':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail  Small Flat Rate Envelope':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'Priority Mail  Window Flat Rate Envelope':
+						$this->originCountries = array('US');
+						$this->destCountries = array('ALL');
+						break;
 					default:
 						$this->originCountries = array('US');
 						$this->destCountries = array('NONE');
@@ -254,6 +304,7 @@ class ShippingService {
 				break;
 			case 'UPS':
 				switch ($this->serviceName) {
+					// EasyPost integration
 					case 'Ground_EP':
 						$this->originCountries = array('US');
 						$this->destCountries = array('US');
