@@ -173,17 +173,17 @@ class WC_Order_ShipTime {
 				// Set ServiceName => ServiceId and ServiceId => CarrierName pairs
 				$shiptime_settings = get_option('woocommerce_shiptime_settings');
 				if ($shiptime_settings && array_key_exists('services', $shiptime_settings)) {
-					foreach ($shiptime_settings['services'] as $serviceId => $data) {
+					foreach ($shiptime_settings['services'] as $key => $data) {
 						if ($data['enabled'] == 'on') {
-							$this->svc_carriers[$serviceId] = $data['carrier'];
+							$sname = substr($data['name'], strlen($data['carrier'])+1);
+							$svc = new emergeit\ShippingService($data['id'], $sname, 0, $data['carrier'], $shiptime_auth->country);
+							$this->svc_carriers[$svc->getKey()] = $data['carrier'];
 							if ($data['intl'] == '1') {
-								$this->shiptime_intl[$data['name']] = $serviceId;
+								$this->shiptime_intl[$data['name']] = $data['id'];
 							} else {
-								$this->shiptime_domestic[$data['name']] = $serviceId;
+								$this->shiptime_domestic[$data['name']] = $data['id'];
 								// exception: any services that can be either domestic/intl (e.g. FedEx Ground)
-								$sname = substr($data['name'], strlen($data['carrier'])+1);
-								$svc = new emergeit\ShippingService(0, $sname, 0, $data['carrier'], $shiptime_auth->country);
-								if ($svc->isIntl()) { $this->shiptime_intl[$data['name']] = $serviceId; }
+								if ($svc->isIntl()) { $this->shiptime_intl[$data['name']] = $data['id']; }
 							}
 						}
 					}
@@ -229,7 +229,8 @@ class WC_Order_ShipTime {
 			);
 		} else {
 			foreach ($quotes->AvailableRates as $quote) {
-				$dsp = $shiptime_settings['services'][$quote->ServiceId]['display_name'];
+				$key = self::get_key($quote);
+				$dsp = $shiptime_settings['services'][$key]['display_name'];
 				if (strpos($dsp, $quote->CarrierName) === false) {
 					$lbl = $quote->CarrierName . ' ' . $dsp;
 				} else {
@@ -246,6 +247,14 @@ class WC_Order_ShipTime {
 		}
 
 		return null;
+	}
+
+	static function get_key($quote) {
+		// USPS does not have unique ServiceIds
+		// FedEx test if CarrierName is contained within ServiceName
+		$svc = (strpos($quote->ServiceName, $quote->CarrierName) === false) ? $quote->CarrierName.' '.$quote->ServiceName : $quote->ServiceName;
+		$key = $quote->ServiceId.base64_encode($svc);
+		return $key;
 	}
 
 	static function casttoclass($class, $object) {
@@ -341,19 +350,20 @@ class WC_Order_ShipTime {
 			}
 			$quotes = self::casttoclass('stdClass', unserialize($shiptime_quote->quote));
 			foreach ($quotes->AvailableRates as $quote) {
-				if (array_key_exists($quote->ServiceId, $shiptime_settings['services'])) {
-					$svcName = $shiptime_settings['services'][$quote->ServiceId]['name'];
-					$this->shipping_services[$svcName] = $quote->ServiceId;
+				$key = self::get_key($quote);
+				if (array_key_exists($key, $shiptime_settings['services'])) {
+					$svcName = $shiptime_settings['services'][$key]['name'];
+					$this->shipping_services[$svcName] = $key;
 				}
 			}
 			echo '<ul><li class="wide"><select class="select" name="shiptime_shipping_method" id="shiptime_shipping_method">';
-			foreach ($this->shipping_services as $svcName => $svcCode) {
+			foreach ($this->shipping_services as $svcName => $key) {
 				// Only list services that are enabled in the plugin settings
-				if (array_key_exists($svcCode, $this->svc_carriers)) {
-					if (strpos($shiptime_settings['services'][$svcCode]['display_name'], $this->svc_carriers[$svcCode]) === false) {
-						$disp_name = $this->svc_carriers[$svcCode].' '.$shiptime_settings['services'][$svcCode]['display_name'];
+				if (array_key_exists($key, $this->svc_carriers)) {
+					if (strpos($shiptime_settings['services'][$key]['display_name'], $this->svc_carriers[$key]) === false) {
+						$disp_name = $this->svc_carriers[$key].' '.$shiptime_settings['services'][$key]['display_name'];
 					} else {
-						$disp_name = $shiptime_settings['services'][$svcCode]['display_name'];
+						$disp_name = $shiptime_settings['services'][$key]['display_name'];
 					}
 					echo '<option value="'.$svcName.'" ' . selected($shipping_method, $disp_name) . ' >'.$disp_name.'</option>';
 				}
@@ -397,7 +407,7 @@ class WC_Order_ShipTime {
 								echo "Inside Dimensions: {$box['inner_length']} X {$box['inner_width']} X {$box['inner_height']} {$dim_uom}<br>Packing Weight: {$box['weight']} {$weight_uom}<br><br>";
 							}
 							?>
-							<a href="<?php echo admin_url( '/?shiptime_box_selection='.base64_encode( $post->ID  ) ); ?>" class="button-primary choose_box">Submit</a>
+							<a href="<?php echo admin_url( '/post.php?post='.$post->ID.'&action=edit&shiptime_box_selection='.base64_encode( $post->ID  ) ); ?>" class="button-primary choose_box">Submit</a>
 						</p>
 						<script type="text/javascript">
 							jQuery("a.choose_box").on("click", function() {
@@ -451,7 +461,7 @@ class WC_Order_ShipTime {
 								</tr>
 							</table>
 							<br><br>
-							<a href="<?php echo admin_url( '/?shiptime_box_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary add_box">Submit</a>
+							<a href="<?php echo admin_url( '/post.php?post='.$post->ID.'&action=edit&shiptime_box_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary add_box">Submit</a>
 						</p>
 						<script type="text/javascript">
 							jQuery("a.add_box").on("click", function() {
@@ -505,7 +515,7 @@ class WC_Order_ShipTime {
 						echo "Inside Dimensions: {$box['inner_length']} X {$box['inner_width']} X {$box['inner_height']} {$dim_uom}<br>Packing Weight: {$box['weight']} {$weight_uom}<br><br>";
 						}
 					?>
-					<a href="<?php echo admin_url( '/?shiptime_pkg_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary choose_box">Submit</a>
+					<a href="<?php echo admin_url( '/post.php?post='.$post->ID.'&action=edit&shiptime_pkg_addition='.base64_encode( $post->ID ) ); ?>" class="button-primary choose_box">Submit</a>
 				</p>
 				<script type="text/javascript">
 					jQuery("a.choose_box").on("click", function() {
@@ -678,9 +688,9 @@ class WC_Order_ShipTime {
 			$shiptime_settings = get_option('woocommerce_shiptime_settings');
 			$services = $shiptime_settings['services'];
 
-			$markup_fixed = $services[$quote->ServiceId]['markup_fixed'];
+			$markup_fixed = $services[self::get_key($quote)]['markup_fixed'];
 			$markup_fixed = is_numeric($markup_fixed) && !empty($markup_fixed) ? $markup_fixed : 0;
-			$markup_percentage = $services[$quote->ServiceId]['markup_percentage'];
+			$markup_percentage = $services[self::get_key($quote)]['markup_percentage'];
 			$markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage : 0;
 
 			$pre = get_woocommerce_currency_symbol();
@@ -924,7 +934,7 @@ class WC_Order_ShipTime {
 			}
 			$req->To->City = $ship_city;
 			$req->To->Phone = $bill_addr['phone'];
-			$req->To->CompanyName = !empty($ship_addr['company']) ? $ship_addr['company'] : 'NA';
+			$req->To->CompanyName = !empty($ship_addr['company']) ? $ship_addr['company'] : ucwords($ship_addr['first_name'] . ' ' . $ship_addr['last_name']);
 			$req->To->CountryCode = $ship_addr['country'];
 			$req->To->Email = $bill_addr['email'];
 			$req->To->PostalCode = $ship_addr['postcode'];
@@ -936,14 +946,18 @@ class WC_Order_ShipTime {
 			$req->PackageType = 'PACKAGE';
 			foreach ($shiptime_pkgs as $pkg) {
 				$item = new emergeit\LineItem();
+				// Round up for package dimensions < 1 IN
 				$item->Length->UnitsType = 'IN';
-				$item->Length->Value = ceil(wc_get_dimension($pkg['length'], 'in'));
+				$pkg_length = wc_get_dimension($pkg['length'], 'in');
+				$item->Length->Value = $pkg_length >= 1 ? $pkg_length : 1;
 				$item->Width->UnitsType = 'IN';
-				$item->Width->Value = ceil(wc_get_dimension($pkg['width'], 'in'));
+				$pkg_width = wc_get_dimension($pkg['width'], 'in');
+				$item->Width->Value = $pkg_width >= 1 ? $pkg_width : 1;
 				$item->Height->UnitsType = 'IN';
-				$item->Height->Value = ceil(wc_get_dimension($pkg['height'], 'in'));
+				$pkg_height = wc_get_dimension($pkg['height'], 'in');
+				$item->Height->Value = $pkg_height >= 1 ? $pkg_height : 1;
+				// Round up for packages < 1 LB
 				$item->Weight->UnitsType = 'LB';
-				// TODO: Support packages < 1 LB
 				$pkg_weight = wc_get_weight($pkg['weight'], 'lbs');
 				$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 
@@ -973,7 +987,7 @@ class WC_Order_ShipTime {
 
 				$ic = new emergeit\InvoiceContact();
 				$ic->City = ucwords($bill_addr['city']);
-				$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : 'NA';
+				$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : ucwords($bill_addr['first_name'] . ' ' . $bill_addr['last_name']);
 				$ic->CountryCode = $order->get_shipping_country();
 				$ic->Email = $bill_addr['email'];
 				$ic->Phone = $bill_addr['phone'];
@@ -1348,14 +1362,18 @@ class WC_Order_ShipTime {
 
 			foreach ($shiptime_pkgs as $pkg) {
 				$item = new emergeit\LineItem();
+				// Round up for package dimensions < 1 IN
 				$item->Length->UnitsType = 'IN';
-				$item->Length->Value = wc_get_dimension($pkg['length'], 'in');
+				$pkg_length = wc_get_dimension($pkg['length'], 'in');
+				$item->Length->Value = $pkg_length >= 1 ? $pkg_length : 1;
 				$item->Width->UnitsType = 'IN';
-				$item->Width->Value = wc_get_dimension($pkg['width'], 'in');
+				$pkg_width = wc_get_dimension($pkg['width'], 'in');
+				$item->Width->Value = $pkg_width >= 1 ? $pkg_width : 1;
 				$item->Height->UnitsType = 'IN';
-				$item->Height->Value = wc_get_dimension($pkg['height'], 'in');
+				$pkg_height = wc_get_dimension($pkg['height'], 'in');
+				$item->Height->Value = $pkg_height >= 1 ? $pkg_height : 1;
+				// Round up for packages < 1 LB
 				$item->Weight->UnitsType = 'LB';
-				// TODO: Support packages < 1 LB
 				$pkg_weight = wc_get_weight($pkg['weight'], 'lbs');
 				$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 
@@ -1382,7 +1400,7 @@ class WC_Order_ShipTime {
 
 				$ic = new emergeit\InvoiceContact();
 				$ic->City = ucwords($bill_addr['city']);
-				$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : 'NA';
+				$ic->CompanyName = !empty($bill_addr['company']) ? $bill_addr['company'] : ucwords($bill_addr['first_name'] . ' ' . $bill_addr['last_name']);
 				$ic->CountryCode = $order->get_shipping_country();
 				$ic->Email = $bill_addr['email'];
 				$ic->Phone = $bill_addr['phone'];

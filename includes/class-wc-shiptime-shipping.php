@@ -238,10 +238,10 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 		$services = array();
 		$data = $_POST['services'];
 
-		foreach ($data as $serviceId => $options) {
+		foreach ($data as $id => $options) {
 			if (array_key_exists('enabled', $options)) { // prevent undefined index notice
-				$services[wc_clean($serviceId)] = array(
-					'id' => wc_clean($serviceId),
+				$services[wc_clean($id)] = array(
+					'id' => wc_clean($options['service_id']),
 					'name' => wc_clean($options['name']),
 					'display_name' => wc_clean($options['display_name']),
 					'carrier' => wc_clean($options['carrier']),
@@ -251,8 +251,8 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					'markup_percentage' => wc_clean($options['markup_percentage'])
 				);
 			} else {
-				$services[wc_clean($serviceId)] = array(
-					'id' => wc_clean($serviceId),
+				$services[wc_clean($id)] = array(
+					'id' => wc_clean($options['service_id']),
 					'name' => wc_clean($options['name']),
 					'display_name' => wc_clean($options['display_name']),
 					'carrier' => wc_clean($options['carrier']),
@@ -374,7 +374,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 				$req->To->CountryCode = $dest_country;
 				$req->To->PostalCode = $dest_postcode;
 				$req->To->Province = $dest_state;
-				$req->To->City = ''; // lookup handled by ShipTime API
+				$req->To->City = $dest_city; // lookup handled by ShipTime API
 				$req->To->Notify = false;
 				$req->To->Residential = false;
 
@@ -490,20 +490,31 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 					unset($req->CustomsInvoice);
 				}
 
+				// Debug output - Shipment Items
+				if ($this->debug && $is_admin === true) {
+					$debug_output .= 'BEGIN DEBUG: SHIPMENT ITEMS<br>';
+					$debug_output .= '<pre>' . print_r($items, true) . '</pre>';
+					$debug_output .= 'END DEBUG: SHIPMENT ITEMS<br>';
+				}
+
 				// Convert Items array to Packages array
 				$packages = $this->pkg($items, true);
 
 				foreach ($packages as $pkg) {
 					$item = new emergeit\LineItem();
 
+					// Round up for package dimensions < 1 IN
 					$item->Length->UnitsType = $pkg->getDimUnit();
-					$item->Length->Value = $pkg->getLength();
+					$pkg_length = $pkg->getLength();
+					$item->Length->Value = $pkg_length >= 1 ? $pkg_length : 1;
 					$item->Width->UnitsType = $pkg->getDimUnit();
-					$item->Width->Value = $pkg->getWidth();
+					$pkg_width = $pkg->getWidth();
+					$item->Width->Value = $pkg_width >= 1 ? $pkg_width : 1;
 					$item->Height->UnitsType = $pkg->getDimUnit();
-					$item->Height->Value = $pkg->getHeight();
+					$pkg_height = $pkg->getHeight();
+					$item->Height->Value = $pkg_height >= 1 ? $pkg_height : 1;
+					// Round up for packages < 1 LB
 					$item->Weight->UnitsType = $pkg->getWeightUnit();
-					// TODO: Support packages < 1 LB
 					$pkg_weight = $pkg->getWeight();
 					$item->Weight->Value = $pkg_weight >= 1 ? $pkg_weight : 1;
 					$item->Description = 'Item Line Description';
@@ -515,7 +526,7 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 				if ($this->debug && $is_admin === true) {
 					$debug_output .= 'BEGIN DEBUG: SHIP RATES API REQUEST<br>';
 					$debug_output .= '<pre>' . print_r($req, true) . '</pre>';
-					$debug_output .= 'END DEBUG: SHIP RATES API REQUEST<br>';					
+					$debug_output .= 'END DEBUG: SHIP RATES API REQUEST<br>';
 				}
 
 				// Unique identifier for cart items & destiniation
@@ -594,19 +605,19 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 				if (isset($shipRates->AvailableRates)) {
 					foreach ($shipRates->AvailableRates as $shipRate) {
 						// Add Rate
-						if (array_key_exists($shipRate->ServiceId, $this->services)) { // skip services not enabled
-							if (strpos($this->services[$shipRate->ServiceId]['display_name'], $shipRate->CarrierName) === false) {
-								$lbl = $shipRate->CarrierName . " ". $this->services[$shipRate->ServiceId]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
+						if (array_key_exists($this->getKey($shipRate), $this->services)) { // skip services not enabled
+							if (strpos($this->services[$this->getKey($shipRate)]['display_name'], $shipRate->CarrierName) === false) {
+								$lbl = $shipRate->CarrierName . " ". $this->services[$this->getKey($shipRate)]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
 							} else {
-								$lbl = $this->services[$shipRate->ServiceId]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
+								$lbl = $this->services[$this->getKey($shipRate)]['display_name'] . " [" . ((int)$this->turnaround_days + (int)$shipRate->TransitDays) . "]*";
 							}
 							$exch_rate = (float) $shipRate->ExchangeRate;
 							$cost = ($is_domestic && strpos($shipRate->ServiceName, 'Ground') !== false && !empty($this->shipping_threshold) && (float)$woocommerce->cart->cart_contents_total >= $this->shipping_threshold) ? 0.00 : $shipRate->TotalCharge->Amount*$exch_rate/100.00;
 							if ($cost == 0) $lbl .= " (FREE)";
-							if ($this->services[$shipRate->ServiceId]['enabled'] == 'on') {
-								$markup_fixed = $this->services[$shipRate->ServiceId]['markup_fixed'];
+							if ($this->services[$this->getKey($shipRate)]['enabled'] == 'on') {
+								$markup_fixed = $this->services[$this->getKey($shipRate)]['markup_fixed'];
 								$markup_fixed = is_numeric($markup_fixed) && !empty($markup_fixed) ? $markup_fixed : 0;
-								$markup_percentage = $this->services[$shipRate->ServiceId]['markup_percentage'];
+								$markup_percentage = $this->services[$this->getKey($shipRate)]['markup_percentage'];
 								$markup_percentage = is_numeric($markup_percentage) && !empty($markup_percentage) ? (float)$markup_percentage/100.00 + 1 : 0;
 								if (!empty($cost)) {
 									if (!empty($markup_fixed)) {
@@ -687,6 +698,11 @@ class WC_Shipping_ShipTime extends WC_Shipping_Method {
 			return;
 		}
 
+	}
+
+	public function getKey($shipRate) {
+		$svc = (strpos($shipRate->ServiceName, $shipRate->CarrierName) === false) ? $shipRate->CarrierName.' '.$shipRate->ServiceName : $shipRate->ServiceName;
+		return $shipRate->ServiceId.base64_encode($svc);
 	}
 
 	public function sortRates($a,$b) {

@@ -38,13 +38,16 @@
 					$resp = $signupClient->getServices($req);
 					foreach ($resp->ServiceOptions as $serviceOption) {
 						$skip = false;
-						foreach ($shipping_services as $serviceId => $data) {
+						foreach ($shipping_services as $key => $data) {
 							if ($serviceOption->CarrierName == $data['CarrierName'] && $serviceOption->ServiceName == $data['ServiceName']) {
 								$skip = true;
 							}
 						}
 						if (!$skip) {
-							$shipping_services[$serviceOption->ServiceId] = array(
+							$svc = (strpos($serviceOption->ServiceName, $serviceOption->CarrierName) === false) ? $serviceOption->CarrierName.' '.$serviceOption->ServiceName : $serviceOption->ServiceName;
+							$key = $serviceOption->ServiceId.base64_encode($svc);
+							$shipping_services[$key] = array(
+								'ServiceId' => $serviceOption->ServiceId,
 								'CarrierId' => $serviceOption->CarrierId,
 								'CarrierName' => $serviceOption->CarrierName,
 								'ServiceName' => $serviceOption->ServiceName,
@@ -56,8 +59,8 @@
 
 					$this->available_services = array();
 					if (is_array($shipping_services)) {
-						foreach ($shipping_services as $service_id => $data) {
-							$this->available_services[] = new emergeit\ShippingService($service_id,$data['ServiceName'],$data['CarrierId'],$data['CarrierName'],$shiptime_auth->country);
+						foreach ($shipping_services as $key => $data) {
+							$this->available_services[] = new emergeit\ShippingService($data['ServiceId'],$data['ServiceName'],$data['CarrierId'],$data['CarrierName'],$shiptime_auth->country);
 						}
 					}
 
@@ -70,27 +73,28 @@
 								if (!$service->isDomestic()) { $intl = true; } ?>
 								<tr<?php if ($intl) echo " class='intl'"; ?> style='height:40px'>
 									<td>
-										<input type="hidden" name="services[<?php echo $service->getId(); ?>][name]" value="<?php echo $service->getFullName(); ?>" />
-										<input type="hidden" name="services[<?php echo $service->getId(); ?>][intl]" value="<?php echo $intl ? 1 : 0; ?>" />
+										<input type="hidden" name="services[<?php echo $service->getKey(); ?>][service_id]" value="<?php echo $service->getId(); ?>" />
+										<input type="hidden" name="services[<?php echo $service->getKey(); ?>][name]" value="<?php echo $service->getFullName(); ?>" />
+										<input type="hidden" name="services[<?php echo $service->getKey(); ?>][intl]" value="<?php echo $intl ? 1 : 0; ?>" />
 										<?php echo '<strong>'.$service->getName().'</strong>'; ?>
 									</td>
 									<td>
-										<input type="text" name="services[<?php echo $service->getId(); ?>][display_name]" value="<?php echo isset( $this->services[$service->getId()]['display_name'] ) ? $this->services[$service->getId()]['display_name'] : $service->getDisplayName(); ?>" />
+										<input type="text" name="services[<?php echo $service->getKey(); ?>][display_name]" value="<?php echo isset( $this->services[$service->getKey()]['display_name'] ) ? $this->services[$service->getKey()]['display_name'] : $service->getDisplayName(); ?>" />
 									</td>
 									<td>
-										<input type="hidden" name="services[<?php echo $service->getId(); ?>][carrier]" value="<?php echo $shipping_services[$service->getId()]['CarrierName']; ?>" />
-										<?php echo $shipping_services[$service->getId()]['CarrierName']; ?>
+										<input type="hidden" name="services[<?php echo $service->getKey(); ?>][carrier]" value="<?php echo $shipping_services[$service->getKey()]['CarrierName']; ?>" />
+										<?php echo $shipping_services[$service->getKey()]['CarrierName']; ?>
 									</td>
 									<td class="check-column">
 										<label>
-											<input type="checkbox" name="services[<?php echo $service->getId(); ?>][enabled]" <?php checked( (isset($this->services[$service->getId()]['enabled']) || $shiptime_settings === false ), true ); ?> />
+											<input type="checkbox" name="services[<?php echo $service->getKey(); ?>][enabled]" <?php checked( (isset($this->services[$service->getKey()]['enabled']) || $shiptime_settings === false ), true ); ?> />
 										</label>
 									</td>
 									<td>
-										<?php echo get_woocommerce_currency_symbol(); ?><input type="text" name="services[<?php echo $service->getId(); ?>][markup_fixed]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getId()]['markup_fixed'] ) ? $this->services[$service->getId()]['markup_fixed'] : ''; ?>" size="4" />
+										<?php echo get_woocommerce_currency_symbol(); ?><input type="text" name="services[<?php echo $service->getKey(); ?>][markup_fixed]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getKey()]['markup_fixed'] ) ? $this->services[$service->getKey()]['markup_fixed'] : ''; ?>" size="4" />
 									</td>
 									<td>
-										<input type="text" name="services[<?php echo $service->getId(); ?>][markup_percentage]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getId()]['markup_percentage'] ) ? $this->services[$service->getId()]['markup_percentage'] : ''; ?>" size="4" />%
+										<input type="text" name="services[<?php echo $service->getKey(); ?>][markup_percentage]" placeholder="N/A" value="<?php echo isset( $this->services[$service->getKey()]['markup_percentage'] ) ? $this->services[$service->getKey()]['markup_percentage'] : ''; ?>" size="4" />%
 									</td>
 								</tr>
 								<?php

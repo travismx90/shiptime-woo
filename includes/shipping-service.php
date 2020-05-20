@@ -31,49 +31,54 @@ class ShippingService {
 	}
 
 	// TODO: Add services here as they are added to the plugin
+	// FedEx services start with CarrierName ('FedEx' required in ServiceName to determine Dom/Intl)
 	public function setServiceData() {
 		switch ($this->carrierName) {
 			case 'FedEx':
 				switch ($this->serviceName) {
-					case 'Priority Overnight':
+					case 'FedEx Economy':
 						$this->originCountries = array('CA','US');
 						$this->destCountries = array('CA','US');
 						break;
-					case 'International First':
-						$this->originCountries = array('CA','US');
-						$this->destCountries = array('ALL');
-						break;
-					case 'Economy':
+					case 'FedEx Second Day AM':
 						$this->originCountries = array('CA','US');
 						$this->destCountries = array('CA','US');
 						break;
-					case 'Standard Overnight':
+					case 'FedEx First Overnight':
 						$this->originCountries = array('CA','US');
 						$this->destCountries = array('CA','US');
 						break;
-					case 'International Economy':
-						$this->originCountries = array('CA','US');
-						$this->destCountries = array('ALL');
-						break;
-					case 'Second Day AM':
+					case 'FedEx Standard Overnight':
 						$this->originCountries = array('CA','US');
 						$this->destCountries = array('CA','US');
 						break;
-					case 'International Priority':
+					case 'FedEx Priority Overnight':
 						$this->originCountries = array('CA','US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('CA','US');
 						break;
-					case 'Ground':
+					case 'FedEx 1-Day Freight':
+						$this->originCountries = array('CA','US');
+						$this->destCountries = array('CA','US');
+						break;
+					case 'FedEx Ground':
 						$this->originCountries = array('CA','US');
 						$this->destCountries = array('CA','US','ALL'); // Domestic & Intl
 						break;
-					case 'First Overnight':
+					case 'FedEx International First':
 						$this->originCountries = array('CA','US');
-						$this->destCountries = array('CA','US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'FedEx International Economy':
+						$this->originCountries = array('CA','US');
+						$this->destCountries = array('ALL');
+						break;
+					case 'FedEx International Priority':
+						$this->originCountries = array('CA','US');
+						$this->destCountries = array('ALL');
 						break;
 					default:
 						$this->originCountries = array('CA','US');
-						$this->destCountries = array('NONE');
+						$this->destCountries = array('ALL');
 						break;
 				}
 				break;
@@ -101,17 +106,17 @@ class ShippingService {
 						break;
 					default:
 						$this->originCountries = array('CA','US');
-						$this->destCountries = array('NONE');
+						$this->destCountries = array('ALL');
 						break;
 				}
 				break;
 			case 'Canpar':
 				$this->originCountries = array('CA');
-				$this->destCountries = array('CA');			
+				$this->destCountries = array('CA');
 				break;
 			case 'Canada Post':
 				$this->originCountries = array('CA');
-				$this->destCountries = array('CA');			
+				$this->destCountries = array('CA');
 				break;
 			case 'Purolator':
 				switch ($this->serviceName) {
@@ -174,7 +179,7 @@ class ShippingService {
 						$this->originCountries = array('CA');
 						$this->destCountries = array('US');
 						$this->displayName = 'Ground U.S.';
-						break;						
+						break;
 					case 'Purolator Express Envelope 10:30AM':
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
@@ -204,20 +209,20 @@ class ShippingService {
 						$this->originCountries = array('CA');
 						$this->destCountries = array('CA');
 						$this->displayName = 'Express Envelope 12PM';
-						break;					
+						break;
 					default:
 						$this->originCountries = array('CA');
-						$this->destCountries = array('NONE');
+						$this->destCountries = array('CA');
 						break;
 				}
 				break;
 			case 'Dicom':
 				$this->originCountries = array('CA');
-				$this->destCountries = array('CA');			
+				$this->destCountries = array('CA');
 				break;
 			case 'Loomis':
 				$this->originCountries = array('CA');
-				$this->destCountries = array('CA');			
+				$this->destCountries = array('CA');
 				break;
 			case 'USPS':
 				switch ($this->serviceName) {
@@ -250,55 +255,55 @@ class ShippingService {
 					// Direct integration
 					case 'Priority Mail Express':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail  Large Flat Rate Box':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail  Medium Flat Rate Box':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail  Small Flat Rate Box':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail Express  Legal Flat Rate Envelope':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail Express  Padded Flat Rate Envelope':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail  Flat Rate Envelope':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail  Legal Flat Rate Envelope':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail  Padded Flat Rate Envelope':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail  Small Flat Rate Envelope':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					case 'Priority Mail  Window Flat Rate Envelope':
 						$this->originCountries = array('US');
-						$this->destCountries = array('ALL');
+						$this->destCountries = array('US');
 						break;
 					default:
 						$this->originCountries = array('US');
-						$this->destCountries = array('NONE');
+						$this->destCountries = array('ALL');
 						break;
 				}
 				break;
@@ -342,7 +347,7 @@ class ShippingService {
 						break;
 					default:
 						$this->originCountries = array('US');
-						$this->destCountries = array('NONE');
+						$this->destCountries = array('US');
 						break;
 				}
 				break;
@@ -374,6 +379,11 @@ class ShippingService {
 
 	public function getId() {
 		return $this->serviceId;
+	}
+
+	public function getKey() {
+		// Note: USPS does not have unique ServiceIds
+		return $this->serviceId.base64_encode($this->getFullName());
 	}
 
 	public function getName() {
